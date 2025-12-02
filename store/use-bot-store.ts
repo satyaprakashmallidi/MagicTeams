@@ -221,6 +221,7 @@ export const useBotStore = create<BotStore>((set, get) => ({
         custom_questions: originalBot.custom_questions ? JSON.parse(JSON.stringify(originalBot.custom_questions)) : [],
         selected_tools: originalBot.selected_tools ? [...originalBot.selected_tools] : [],
         first_speaker: originalBot.first_speaker,
+        is_enabled: originalBot.is_enabled !== false,
       };
 
       const { data, error } = await supabase
