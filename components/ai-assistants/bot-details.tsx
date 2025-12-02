@@ -26,6 +26,7 @@ import { startCall, endCall, startTwilioCall } from "@/lib/callFunctions";
 import { Transcript, UltravoxSessionStatus } from "ultravox-client";
 import { CallConfig, TwilioConfig } from "@/lib/types";
 import { BotAppointmentConfig } from "./bot-appointment-config";
+import { BotToggle } from "./bot-toggle";
 import { BotSettingsDialog } from "./bot-settings-dialog";
 import { useVoices } from "@/hooks/use-voices";
 import { useBots } from "@/hooks/use-bots";
@@ -44,6 +45,8 @@ import { Bot, CustomQuestion, RealtimeCaptureField } from "@/types/database";
 import { useUser } from "@/hooks/use-user";
 import { agentService } from "@/lib/services/agent.service";
 import { logBotOperation, logAgentSync } from "@/lib/utils/api-logger";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 
 
 
@@ -56,7 +59,7 @@ const formSchema = z.object({
   selected_tools: z.array(z.string()).default([]),
   temperature: z.number().min(0).max(10).default(0.7),
   twilio_phone_number: z.string().optional(),
-  model: z.enum(["fixie-ai/ultravox", "fixie-ai/ultravox-gemma3-27b-preview", "fixie-ai/ultravox-llama3.3-70b", "fixie-ai/ultravox-qwen3-32b-preview" , "fixie-ai/ultravox-glm4.5-355b-preview"]).default("fixie-ai/ultravox"),
+  model: z.enum(["fixie-ai/ultravox", "fixie-ai/ultravox-gemma3-27b-preview", "fixie-ai/ultravox-llama3.3-70b", "fixie-ai/ultravox-qwen3-32b-preview", "fixie-ai/ultravox-glm4.5-355b-preview"]).default("fixie-ai/ultravox"),
   first_speaker: z.enum(["FIRST_SPEAKER_AGENT", "FIRST_SPEAKER_USER"]).default("FIRST_SPEAKER_AGENT"),
 });
 
@@ -168,6 +171,10 @@ export function BotDetails() {
     }
   }, [time, callStarted]);
 
+  // Get current bot and check if it's enabled
+  const currentBot = bots.find((bot) => bot.id === botId);
+  const isBotEnabled = currentBot?.is_enabled !== false;
+
   useEffect(() => {
     const bot = bots.find((bot) => bot.id === botId);
 
@@ -235,6 +242,39 @@ export function BotDetails() {
       });
     } finally {
       setIsDuplicating(false);
+    }
+  };
+
+  const handleToggleEnabled = async (value: boolean) => {
+    if (!botId) return;
+
+    try {
+      const { error } = await supabase
+        .from('bots')
+        .update({ is_enabled: value })
+        .eq('id', botId);
+
+      if (error) throw error;
+
+      // Update local state
+      const currentBot = bots.find((bot) => bot.id === botId);
+      if (currentBot) {
+        await updateBot(botId, { ...currentBot, is_enabled: value });
+      }
+
+      toast({
+        title: value ? "Bot enabled" : "Bot disabled",
+        description: value
+          ? "Bot is now active and can receive/make calls."
+          : "Bot is disabled and cannot make or receive calls.",
+      });
+    } catch (error) {
+      console.error('Error toggling bot:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update bot status. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -381,12 +421,12 @@ export function BotDetails() {
         const kb = knowledgeBases.find(kb => kb.corpus_id === toolId);
         return kb
           ? {
-              toolName: 'queryCorpus',
-              parameterOverrides: {
-                corpus_id: kb.corpus_id,
-                max_results: 20
-              }
+            toolName: 'queryCorpus',
+            parameterOverrides: {
+              corpus_id: kb.corpus_id,
+              max_results: 20
             }
+          }
           : { toolName: toolId };
       }
       // Otherwise just simple toolName
@@ -478,19 +518,19 @@ export function BotDetails() {
 
     console.log("callConfig before metadata === ", callConfig);
 
-    if(isAppointmentEnabled){
+    if (isAppointmentEnabled) {
       if (!callConfig.metadata) callConfig.metadata = {};
       console.log("isAppointmentEnabled ===  started setting metadata", isAppointmentEnabled);
       if (!callConfig.metadata) {
         callConfig.metadata = {};
       }
       const appointmentToolId = bot?.appointment_tool_id || localStorage.getItem(`bookingAppointmentToolId_${botId}`);
-      if(appointmentToolId){
+      if (appointmentToolId) {
         console.log("appointmentToolId === ", appointmentToolId);
         callConfig.metadata.appointmentToolId = appointmentToolId;
       }
     }
-    if(bot?.knowledge_base_id){
+    if (bot?.knowledge_base_id) {
       if (!callConfig.metadata) callConfig.metadata = {};
 
       console.log("bot?.knowledge_base_id === ", bot?.knowledge_base_id);
@@ -713,15 +753,20 @@ export function BotDetails() {
         <div className="bg-card p-6 rounded-lg shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Bot Configuration</h2>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsSettingsDialogOpen(true)}
-              className="flex items-center gap-2"
-            >
-              <Icon name="settings" className="h-4 w-4" />
-              Settings
-            </Button>
+            <div className="flex items-center gap-2">
+              {botId && bots.find(b => b.id === botId) && (
+                <BotToggle bot={bots.find(b => b.id === botId)!} />
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsSettingsDialogOpen(true)}
+                className="flex items-center gap-2"
+              >
+                <Icon name="settings" className="h-4 w-4" />
+                Settings
+              </Button>
+            </div>
           </div>
           <form
             onSubmit={handleSubmit(onSubmit)}
@@ -1217,7 +1262,7 @@ For product questions or after-hours emergencies, direct clients to contact our 
             <Button
               className="flex-1 items-center justify-center gap-2"
               onClick={handleCall}
-              disabled={isLoading || !twilioAllowed || isCallActive}
+              disabled={isLoading || !twilioAllowed || isCallActive || !isBotEnabled}
             >
               <Icon name="phone-call" className="h-4 w-4" />
               Start Call
@@ -1226,12 +1271,17 @@ For product questions or after-hours emergencies, direct clients to contact our 
                   (Twilio not configured)
                 </span>
               )}
+              {!isBotEnabled && (
+                <span className="text-xs text-red-500">
+                  (Bot inactive)
+                </span>
+              )}
             </Button>
 
             <Button
               variant={isMuted ? "destructive" : "outline"}
               className="flex-1 items-center justify-center gap-2"
-              disabled={isLoading}
+              disabled={isLoading || !isBotEnabled}
               onClick={handleToggleMute}
             >
               <Icon
@@ -1245,7 +1295,7 @@ For product questions or after-hours emergencies, direct clients to contact our 
               variant={isCallActive ? "destructive" : "default"}
               className="flex-1 items-center justify-center gap-2"
               onClick={isCallActive ? terminateCall : initiateCall}
-              disabled={isLoading}
+              disabled={isLoading || (!isCallActive && !isBotEnabled)}
             >
               <Icon name="phone-call" className="h-4 w-4" />
               {isCallActive ? "End Call" : "Demo Call"}

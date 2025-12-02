@@ -11,11 +11,11 @@ import { supabase } from "../supabase";
 // Update the template to remove appointment types and business hours
 const getAppointmentBookingTemplate = (userSystemPrompt: string): string => {
   const currentDate = new Date();
-  const formattedDate = currentDate.toLocaleDateString('en-US', { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
+  const formattedDate = currentDate.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
   });
 
   return `### Virtual Assistant Prompt — Healthcare Voice Agent for Natural Appointment Booking
@@ -331,15 +331,15 @@ export class CallService {
         await this.configureAppointments(callConfig);
       }
       console.log("callConfig.metadata?.knowledgeBaseId", callConfig.metadata)
-      
+
       if (callConfig.metadata?.knowledgeBaseId) {
         console.log("callConfig.metadata?.knowledgeBaseId", callConfig.metadata?.knowledgeBaseId)
         await this.configureKnowledgeBase(callConfig);
       }
-      
-      console.log(`Total tools configured: ${callConfig.tools?.length || 0}` , callConfig.tools);
+
+      console.log(`Total tools configured: ${callConfig.tools?.length || 0}`, callConfig.tools);
       console.log("=== TOOL CONFIGURATION COMPLETED ===");
-      
+
       return callConfig;
     } catch (error) {
       console.error("=== TOOL CONFIGURATION ERROR ===");
@@ -351,7 +351,7 @@ export class CallService {
   async createCall(
     callConfig: CallConfig,
     showDebugMessages?: boolean
-  ): Promise<JoinUrlResponse | { error: string }>  {
+  ): Promise<JoinUrlResponse | { error: string }> {
     try {
       if (this.time <= 0 && !this.callActive) {
         return { error: "No credits left. Please top up." };
@@ -363,7 +363,7 @@ export class CallService {
         botId: callConfig.botId || 'not provided',
         hasTransferConfig: !!callConfig.transfer_to
       });
-      
+
       const botId = callConfig.botId;
       const transferTo = callConfig.transfer_to; // Store in local variable
 
@@ -371,15 +371,24 @@ export class CallService {
         console.log(`Call transfer feature enabled for number: ${transferTo}`);
       }
 
+      // Check if bot is active
+      if (botId) {
+        const bot = await this.supabaseService.getLatestBotData(botId);
+        if (bot && bot.is_enabled === false) {
+          console.warn(`[CallService] Blocked call for inactive bot: ${botId}`);
+          return { error: "This agent is currently inactive. Please enable it to make calls." };
+        }
+      }
+
       const user_id = (await this.supabaseService.getUserId()) || "error-getting-user-id";
 
-      if(showDebugMessages) {
+      if (showDebugMessages) {
         console.log("user_id", user_id);
       }
 
       callConfig.metadata = {
-        "user_id" : user_id,
-        "bot_id" : botId || "error-getting-bot-id"
+        "user_id": user_id,
+        "bot_id": botId || "error-getting-bot-id"
       };
 
       // Add transferTo to metadata if available
@@ -414,19 +423,19 @@ export class CallService {
       console.log("Original system prompt:", callConfig.systemPrompt);
       // callConfig.systemPrompt = getAppointmentBookingTemplate(callConfig.systemPrompt);
       console.log("Enhanced system prompt with template applied");
-      
+
       await this.configureAppointments(callConfig);
       // await this.configureKnowledgeBase(callConfig); this is not needed anymore it is coming form the froned already
       await this.configureEndCallTool(callConfig);
       // await this.configureConversationStateTool(callConfig);
 
-      if(callConfig.tools){
+      if (callConfig.tools) {
         console.log(`Total tools configured: ${callConfig.tools.length}`);
-        console.log("Tool names:", callConfig.tools.map(tool => 
+        console.log("Tool names:", callConfig.tools.map(tool =>
           tool.toolName || tool.temporaryTool?.modelToolName || 'unnamed tool'
         ));
       }
-      
+
       callConfig.experimentalSettings = {
         backSeatDriver: true
       }
@@ -491,7 +500,7 @@ export class CallService {
       console.log(`Call created successfully, ID: ${data.data.callId}`);
       console.log("=== CREATE CALL COMPLETED ===");
       return data.data;
-     
+
     } catch (error) {
       console.error("=== CREATE CALL ERROR ===");
       console.error("Error details:", error);
@@ -503,7 +512,7 @@ export class CallService {
     }
   }
 
-  async saveCalltoDB({ callId , botId }: { callId: string , botId: string }) : Promise<void> {
+  async saveCalltoDB({ callId, botId }: { callId: string, botId: string }): Promise<void> {
     try {
       await this.supabaseService.insertCallData(callId, botId);
     }
@@ -516,21 +525,21 @@ export class CallService {
   private async configureAppointments(callConfig: CallConfig): Promise<void> {
     try {
       let bot = await this.supabaseService.getLatestBotData(callConfig.botId || "");
-      if(!bot?.appointment_tool_id){
+      if (!bot?.appointment_tool_id) {
         const { data, error } = await supabase
           .from('bots')
           .select('*')
           .eq('id', callConfig?.metadata.botId || "")
           .single();
-          
-          if(error){
-            console.error("❌ Error fetching bot:", error);
-            return;
-          }
 
-          if(data){
-            bot = data;
-          }
+        if (error) {
+          console.error("❌ Error fetching bot:", error);
+          return;
+        }
+
+        if (data) {
+          bot = data;
+        }
       }
 
       const isAppointmentsEnabled = bot?.is_appointment_booking_allowed;
@@ -561,7 +570,7 @@ export class CallService {
   ): Promise<string> {
     try {
 
-      console.log("response",  callData)
+      console.log("response", callData)
 
       if ('error' in callData) {
         console.error("Error in startCall:", callData.error);
@@ -616,9 +625,9 @@ export class CallService {
       await this.configureTransferTool(callConfig);
 
       await this.configureAppointments(callConfig);
-      
+
       await this.configureKnowledgeBase(callConfig);
-      
+
       await this.configureEndCallTool(callConfig);
 
       const callData = await this.createCall(callConfig);
@@ -633,12 +642,12 @@ export class CallService {
       }
 
       const userId = await this.supabaseService.getUserId();
-      
+
       if (!userId) {
         throw new Error("User ID is required");
       }
 
-     this.configureTools(callConfig);
+      this.configureTools(callConfig);
 
       console.log("Configured tools:", callConfig.tools);
 
@@ -654,18 +663,18 @@ export class CallService {
           from_number: twilioConfig.from_number,
           user_id: userId,
           placeholders: {},
-          tools: toolIds,
+          tools: callConfig.tools,
           transfer_to: callConfig.transfer_to,
           is_single_twilio_account: false,
           joinUrl: callData.joinUrl // Pass the join URL to the worker
         }),
       });
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`Failed to initiate Twilio call: ${errorText}`);
       }
-      
+
       const result = await response.json();
 
       if (!result.status || result.status !== 'success') {
@@ -705,7 +714,7 @@ export class CallService {
 
     this.setupEventListeners(callbacks, showDebugMessages);
   }
-  
+
 
   private setupEventListeners(
     callbacks: {
@@ -719,19 +728,19 @@ export class CallService {
     if (!this.ultravoxSession) return;
     console.log("i think i set the event listeners  ");
 
-     
-     this.ultravoxSession.addEventListener("status", async () => {
-       callbacks.onStatusChange(this.ultravoxSession?.status);
-       const status = this.ultravoxSession?.status;
-       if (status === "connecting") {
-         this._setCallActive(true);
-         // Also track start time here as backup
-         if (!this.callStartTime) {
-           this.callStartTime = Date.now();
-           console.log("[CallService] Call connecting - tracking start time");
-         }
+
+    this.ultravoxSession.addEventListener("status", async () => {
+      callbacks.onStatusChange(this.ultravoxSession?.status);
+      const status = this.ultravoxSession?.status;
+      if (status === "connecting") {
+        this._setCallActive(true);
+        // Also track start time here as backup
+        if (!this.callStartTime) {
+          this.callStartTime = Date.now();
+          console.log("[CallService] Call connecting - tracking start time");
         }
-      if(status === "disconnected" || status === "disconnecting"){
+      }
+      if (status === "disconnected" || status === "disconnecting") {
         this._setCallActive(false);
 
         // ⭐ CRITICAL: Deduct minutes when call ends
@@ -776,11 +785,11 @@ export class CallService {
     });
   }
 
-  private async setupAppointmentTool(bot: Bot, appointmentId: string , callConfig: CallConfig) {
+  private async setupAppointmentTool(bot: Bot, appointmentId: string, callConfig: CallConfig) {
     try {
       // This should be implemented based on your appointment tools implementation
       console.log("Setting up appointment tool...");
-      
+
       const calendarAccount = await this.supabaseService.getUserCalendarAccount(bot.user_id);
 
       const appointmentTool = await this.supabaseService.getLastestAppointmentTool(appointmentId);
@@ -788,18 +797,18 @@ export class CallService {
       const actualCalendarAccount = await this.supabaseService.getCalendarAccount(appointmentTool?.calendar_account_id || "");
       console.log("==========================> appointmentTool", appointmentTool);
       console.log("==========================> actualCalendarAccount", actualCalendarAccount);
-      
-      if(!actualCalendarAccount){
+
+      if (!actualCalendarAccount) {
         console.error("❌ Calendar account not found for appointment tool");
         return;
       }
 
-      if(!calendarAccount){
+      if (!calendarAccount) {
         console.error("❌ User calendar account not found");
         return;
       }
 
-      if(!appointmentTool){
+      if (!appointmentTool) {
         console.error("❌ Appointment tool not found");
         return;
       }
@@ -807,13 +816,13 @@ export class CallService {
       let accessToken = actualCalendarAccount?.access_token;
       let refreshToken = actualCalendarAccount?.refresh_token;
 
-      if(accessToken == null || refreshToken == null){
+      if (accessToken == null || refreshToken == null) {
         console.log("Using fallback calendar account tokens");
         accessToken = calendarAccount?.access_token;
         refreshToken = calendarAccount?.refresh_token;
       }
 
-      if(!accessToken || !refreshToken) {
+      if (!accessToken || !refreshToken) {
         console.error("❌ No access or refresh tokens found");
         return;
       }
@@ -821,7 +830,7 @@ export class CallService {
       const systemPrompt = parseSystemPrompt(appointmentTool?.description || "", bot);
 
       // Get appointment types from the tool configuration
-      let appointmentTypes: {name: string, duration: number}[] = [];
+      let appointmentTypes: { name: string, duration: number }[] = [];
       try {
         if ((appointmentTool as any).appointment_types) {
           // Handle string parsing if needed (depending on how it's stored)
@@ -831,14 +840,14 @@ export class CallService {
             appointmentTypes = (appointmentTool as any).appointment_types;
           }
           console.log(`Found ${appointmentTypes.length} appointment types in tool configuration`);
-          
+
           // Create a mapping of appointment type IDs to durations 
           const appointmentDurationMap: Record<string, number> = {};
           appointmentTypes.forEach(type => {
             const typeId = type.name.toLowerCase().replace(/\s+/g, '_');
             appointmentDurationMap[typeId] = type.duration;
           });
-          
+
           console.log("Appointment type to duration mapping:", appointmentDurationMap);
         } else {
           console.warn("No appointment types found in tool configuration, using defaults");
@@ -859,7 +868,7 @@ export class CallService {
       }
 
       const bookingTool: SelectedTool = {
-        temporaryTool:{
+        temporaryTool: {
           modelToolName: "bookAppointment",
           description: systemPrompt + `The current date is ${new Date().toDateString().split('T')[0]} \n\nIMPORTANT: Our appointment types have specific default durations, but we can be flexible if needed.\n- ${appointmentTypes.map(type => `${type.name}: ${type.duration} minutes`).join('\n- ')}\n\nIf a caller specifically requests a different duration, you should accommodate their request when possible. Always confirm the appointment type AND duration with the caller before booking.\n\nCRITICAL RESPONSE VALIDATION INSTRUCTIONS:\n1. After calling bookAppointment, carefully check the response:\n   - Look for "success": true in the response\n   - Verify the response contains appointment details\n   - Check for any error messages\n   - Only proceed if the response indicates a successful booking\n\n2. For successful bookings (when response has success: true):\n   - Immediately confirm the booking to the user\n   - Share the appointment details (date, time, type)\n   - Do NOT mention any technical details or API responses\n   - Do NOT ask for additional confirmation\n   - Do NOT retry the booking\n\n3. For failed bookings:\n   - Check the specific error message\n   - Handle common errors (past date, timezone, etc.)\n   - Only retry if the error is recoverable\n   - After 2 failed attempts, suggest trying again later\n\n4. NEVER:\n   - Ignore a successful response\n   - Retry after a successful booking\n   - Show technical error messages to the user\n   - Ask for confirmation after a successful booking\n   - Mention API responses or technical details\n\n5. Example successful response handling:\n   If response is: { "success": true, "appointment": { ... } }\n   Say: "Perfect! I've booked your appointment for [date] at [time]."\n\n6. Example error handling:\n   If response has error: "Cannot book appointments in the past"\n   Say: "I'm sorry, but that date has already passed. Could you choose a future date?"\n\n7. Response Validation Steps:\n   a. Check success status first\n   b. If success is true, confirm booking immediately\n   c. If success is false, check error message\n   d. Handle error appropriately\n   e. Only retry if error is recoverable\n   f. After 2 failures, suggest trying again later\n\n8. Success Confirmation Format:\n   ✓ "Perfect! I've booked your [appointment type] for [date] at [time]."\n   ✓ "Great! Your appointment is confirmed for [date] at [time]."\n   ✓ "I've scheduled your [appointment type] for [date] at [time]."\n\n9. Error Response Format:\n   ✓ "I'm sorry, but [user-friendly error explanation]. Let me try again."\n   ✓ "I'm having trouble booking that time. Would you like to try a different time?"\n   ✓ "I'm unable to book the appointment right now. Please try again later."\n\n10. NEVER use these responses:\n    ❌ "The API returned an error..."\n    ❌ "Let me try booking that again..."\n    ❌ "The system is having issues..."\n    ❌ "There was a problem with the booking..."\n    ❌ Any technical error messages or API details`,
           dynamicParameters: [
@@ -943,12 +952,12 @@ export class CallService {
 
       console.log("✅ Successfully created appointment tool configuration");
       console.log("🔧 Tool config:", JSON.stringify(bookingTool, null, 2));
-      
+
       // Ensure tools array exists before pushing
       if (!callConfig.tools) {
         callConfig.tools = [];
       }
-      
+
       callConfig.tools.push(bookingTool);
       console.log(`✅ Added bookAppointment tool to tools (total tools: ${callConfig.tools?.length})`);
 
@@ -991,7 +1000,7 @@ export class CallService {
               name: "access_token",
               location: ParameterLocation.QUERY,
               value: accessToken || "not_found",
-            },{
+            }, {
               name: "refresh_token",
               location: ParameterLocation.QUERY,
               value: refreshToken || "not_found",
@@ -1110,8 +1119,8 @@ export class CallService {
     }
   }
 
-  private async configureEndCallTool(callConfig: CallConfig){
-    const endCallTool : SelectedTool = {
+  private async configureEndCallTool(callConfig: CallConfig) {
+    const endCallTool: SelectedTool = {
       toolName: "hangUp"
     }
 
@@ -1120,7 +1129,7 @@ export class CallService {
 
   private async configureKnowledgeBase(callConfig: CallConfig): Promise<void> {
     const bot = await this.supabaseService.getLatestBotData(callConfig.botId || "");
-    
+
     if (!bot?.knowledge_base_id) {
       return;
     }
@@ -1139,7 +1148,7 @@ export class CallService {
   private async configureConversationStateTool(callConfig: CallConfig) {
     try {
       console.log("Setting up conversation state tool...");
-      
+
       const conversationStateTool: SelectedTool = {
         temporaryTool: {
           modelToolName: "manageConversationState",
@@ -1161,7 +1170,7 @@ export class CallService {
               schema: {
                 type: "object",
                 properties: {
-                  callId: { 
+                  callId: {
                     type: "string",
                     description: "The current call ID. This is REQUIRED for all state management operations."
                   },
@@ -1268,11 +1277,11 @@ The transferToNumber parameter MUST be the exact number the user verbally told y
           }
         }
       };
-      
+
       if (!config.tools) {
         config.tools = [];
       }
-      
+
       config.tools.push(transferTool);
 
       // Log the final tool configuration

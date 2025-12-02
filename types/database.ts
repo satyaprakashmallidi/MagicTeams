@@ -27,7 +27,7 @@ export interface Bot {
   knowledge_base_id?: string;
   temperature: number;
   twilio_phone_number?: string;
-  is_call_transfer_allowed : boolean;
+  is_call_transfer_allowed: boolean;
   call_transfer_number?: string;
   model: string;
   custom_questions?: CustomQuestion[];
@@ -35,6 +35,7 @@ export interface Bot {
   is_realtime_capture_enabled?: boolean;
   realtime_capture_fields?: RealtimeCaptureField[];
   first_speaker: "FIRST_SPEAKER_AGENT" | "FIRST_SPEAKER_USER";
+  is_enabled: boolean;
 }
 
 export interface Transcript {

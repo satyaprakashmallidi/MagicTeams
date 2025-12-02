@@ -28,6 +28,22 @@ export async function startCall(
 
     callConfig.systemPrompt = "The present date is " + new Date().toDateString().split('T')[0] + " and the present time is " + new Date().toLocaleTimeString() + ". " + callConfig.systemPrompt;
 
+    // Check if bot is enabled
+    if (callConfig.botId) {
+      const bot = await SupabaseService.getInstance().getBotData(callConfig.botId);
+      if (bot && bot.is_enabled === false) {
+        throw new Error("This agent is currently inactive. Please enable it to make calls.");
+      }
+    }
+
+    // Check if bot is enabled
+    if (callConfig.botId) {
+      const bot = await SupabaseService.getInstance().getBotData(callConfig.botId);
+      if (bot && bot.is_enabled === false) {
+        throw new Error("This agent is currently inactive. Please enable it to make calls.");
+      }
+    }
+
     // Configure all necessary tools first
     const callService = CallService.getInstance();
 
@@ -35,7 +51,7 @@ export async function startCall(
     await callService.configureTools(callConfig);
 
     const hangUpTool = callConfig.tools?.find((tool) => tool.toolName === "hangUp");
-    if(!hangUpTool) {
+    if (!hangUpTool) {
       callConfig.tools?.push({
         toolName: "hangUp"
       });
@@ -57,7 +73,7 @@ export async function startCall(
         to_number: callConfig.to_number,
         ...callConfig.metadata
       },
-      model : callConfig.model
+      model: callConfig.model
     };
 
     logAPICall({
@@ -177,6 +193,14 @@ export async function startTwilioCall(
 
     callConfig.systemPrompt = "The present date is " + new Date().toDateString().split('T')[0] + " and the present time is " + new Date().toLocaleTimeString() + ". " + callConfig.systemPrompt;
 
+    // Check if bot is enabled
+    if (callConfig.botId) {
+      const bot = await SupabaseService.getInstance().getBotData(callConfig.botId);
+      if (bot && bot.is_enabled === false) {
+        throw new Error("This agent is currently inactive. Please enable it to make calls.");
+      }
+    }
+
 
     if (!callConfig.metadata) {
       callConfig.metadata = {};
@@ -195,7 +219,7 @@ export async function startTwilioCall(
 
     //searchFor hangUp tool in callConfig.tools
     const hangUpTool = callConfig.tools?.find((tool) => tool.toolName === "hangUp");
-    if(!hangUpTool) {
+    if (!hangUpTool) {
       callConfig.tools?.push({
         toolName: "hangUp"
       });
@@ -322,6 +346,14 @@ export async function startTwilioCallQueue(
 
     callConfig.systemPrompt = "The present date is " + new Date().toDateString().split('T')[0] + " and the present time is " + new Date().toLocaleTimeString() + ". " + callConfig.systemPrompt;
 
+    // Check if bot is enabled
+    if (callConfig.botId) {
+      const bot = await SupabaseService.getInstance().getBotData(callConfig.botId);
+      if (bot && bot.is_enabled === false) {
+        throw new Error("This agent is currently inactive. Please enable it to make calls.");
+      }
+    }
+
 
     if (!callConfig.metadata) {
       callConfig.metadata = {};
@@ -340,7 +372,7 @@ export async function startTwilioCallQueue(
 
     //searchFor hangUp tool in callConfig.tools
     const hangUpTool = callConfig.tools?.find((tool) => tool.toolName === "hangUp");
-    if(!hangUpTool) {
+    if (!hangUpTool) {
       callConfig.tools?.push({
         toolName: "hangUp"
       });
@@ -432,12 +464,12 @@ export async function startBulkCalls(twilioPhoneNumber: string, botId: string, t
     ...placeholders,
     left_delimeter: "<<<",
     right_delimeter: ">>>"
-  };  
+  };
 
   const parsedSystemPrompt = bot?.system_prompt?.replace(/<<<([^>]+)>>>/g, (_, p1) => placeholders[p1] || p1);
 
 
-  const callConfig : CallConfig = {
+  const callConfig: CallConfig = {
     voice: bot?.voice,
     systemPrompt: parsedSystemPrompt || "",
     medium: {
@@ -452,7 +484,7 @@ export async function startBulkCalls(twilioPhoneNumber: string, botId: string, t
   const account_sid = twilioAccount?.account_sid || "";
   const auth_token = twilioAccount?.auth_token || "";
 
-  if(!from_number || !to_number || !account_sid || !auth_token) {
+  if (!from_number || !to_number || !account_sid || !auth_token) {
     throw new Error("Missing required parameters");
   }
 
@@ -463,7 +495,7 @@ export async function startBulkCalls(twilioPhoneNumber: string, botId: string, t
     auth_token: auth_token,
   };
 
-  const result = await startTwilioCallQueue(twilioConfig , callConfig , () => {} , () => {} , false);  
+  const result = await startTwilioCallQueue(twilioConfig, callConfig, () => { }, () => { }, false);
 
   return result;
 
