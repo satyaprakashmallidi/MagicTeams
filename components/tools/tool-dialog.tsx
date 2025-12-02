@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import dynamic from "next/dynamic";
-const ReactJson = dynamic(() => import("react-json-view"), { ssr: false });
+import "react18-json-view/src/style.css";
+const JsonView = dynamic(() => import("react18-json-view"), { ssr: false });
 
 interface Tool {
   toolId?: string;
@@ -38,11 +39,6 @@ export default function ToolDialog({ open, mode, tool, onClose, onSave }: {
   const [error, setError] = useState<string | null>(null);
 
   const isView = mode === "view";
-
-  const handleJsonChange = (edit: any) => {
-    setDefinition(edit.updated_src);
-    setIsDirty(true);
-  };
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setName(e.target.value);
@@ -109,17 +105,23 @@ export default function ToolDialog({ open, mode, tool, onClose, onSave }: {
                 <span className="text-xs text-muted-foreground" title={fieldExplanations.definition}>?</span>
               </label>
               <div className="mt-2">
-                <ReactJson
+                <JsonView
                   src={definition}
-                  onEdit={isView ? false : handleJsonChange}
-                  onAdd={isView ? false : handleJsonChange}
-                  onDelete={isView ? false : handleJsonChange}
+                  editable={!isView}
+                  onEdit={(params: { newValue: any; src: any }) => {
+                    setDefinition(params.src);
+                    setIsDirty(true);
+                  }}
+                  onAdd={(params: { src: any }) => {
+                    setDefinition(params.src);
+                    setIsDirty(true);
+                  }}
+                  onDelete={(params: { src: any }) => {
+                    setDefinition(params.src);
+                    setIsDirty(true);
+                  }}
                   enableClipboard={true}
-                  displayDataTypes={false}
-                  displayObjectSize={false}
                   collapsed={2}
-                  name={null}
-                  theme="rjv-default"
                   style={{ fontSize: 12 }}
                 />
               </div>

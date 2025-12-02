@@ -61,7 +61,7 @@
     "react-day-picker": "^9.6.2",
     "react-dom": "18.2.0",
     "react-hook-form": "^7.53.0",
-    "react-json-view": "^1.21.3",
+    "react18-json-view": "^0.2.9",
     "recharts": "^3.2.1",
     "stripe": "^19.3.1",
     "tailwind-merge": "^2.5.2",

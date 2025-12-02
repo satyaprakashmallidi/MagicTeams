@@ -2,8 +2,9 @@ import React, { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import dynamic from "next/dynamic";
+import "react18-json-view/src/style.css";
 
-const ReactJson = dynamic(() => import("react-json-view"), { ssr: false });
+const JsonView = dynamic(() => import("react18-json-view"), { ssr: false });
 
 interface Tool {
   toolId: string;
@@ -32,12 +33,6 @@ export default function ToolDetails({ tool, onEdit, onSave }: { tool: Tool | nul
     );
   }
 
-  const handleJsonChange = (edit: any) => {
-    setLocalDef(edit.updated_src);
-    setIsDirty(true);
-    setError(null);
-  };
-
   const handleSave = () => {
     try {
       JSON.stringify(localDef);
@@ -62,29 +57,29 @@ export default function ToolDetails({ tool, onEdit, onSave }: { tool: Tool | nul
         <CardTitle>{tool.name}</CardTitle>
       </CardHeader>
       <CardContent>
-        <style>{`
-          .rjv-default .string-value {
-            white-space: pre-wrap !important;
-            word-break: break-word !important;
-          }
-        `}</style>
-        {/* <div className="mb-4">
-          <span className="font-semibold">Description:</span> {tool.definition?.description || "-"}
-        </div> */}
         <div>
           <span className="font-semibold">Definition (JSON):</span>
           <div className="mt-2">
-            <ReactJson
+            <JsonView
               src={editMode ? localDef : tool.definition}
-              onEdit={editMode ? handleJsonChange : false}
-              onAdd={editMode ? handleJsonChange : false}
-              onDelete={editMode ? handleJsonChange : false}
+              editable={editMode}
+              onEdit={(params: { newValue: any; src: any }) => {
+                setLocalDef(params.src);
+                setIsDirty(true);
+                setError(null);
+              }}
+              onAdd={(params: { src: any }) => {
+                setLocalDef(params.src);
+                setIsDirty(true);
+                setError(null);
+              }}
+              onDelete={(params: { src: any }) => {
+                setLocalDef(params.src);
+                setIsDirty(true);
+                setError(null);
+              }}
               enableClipboard={true}
-              displayDataTypes={false}
-              displayObjectSize={false}
               collapsed={2}
-              name={null}
-              theme="rjv-default"
               style={{ fontSize: 12, height: '100%', minWidth: '340px' }}
             />
           </div>
