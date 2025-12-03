@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { Bot } from '@/types/database';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/hooks/use-auth';
+import { agentService } from '@/lib/services/agent.service';
+import { toast } from '@/hooks/use-toast';
 
 interface BotState {
   bots: Bot[];
@@ -65,8 +67,8 @@ export const useBotStore = create<BotStore>((set, get) => ({
       if (error) throw error;
 
       const bots = data || [];
-      
-      set({ 
+
+      set({
         bots,
         lastFetched: now,
         error: null
@@ -75,7 +77,7 @@ export const useBotStore = create<BotStore>((set, get) => ({
       return bots;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch bots';
-      set({ 
+      set({
         error: errorMessage,
         bots: []
       });
@@ -94,16 +96,7 @@ export const useBotStore = create<BotStore>((set, get) => ({
         throw new Error('User not authenticated');
       }
 
-      // const { data, error } = await supabase
-      //   .from('bots')
-      //   .insert([{ ...bot, user_id: userId }])
-      //   .select()
-      //   .single();
-
-      // if (error) throw error;
-      // if (!data) throw new Error('Failed to add bot');
-
-      set(state => ({ 
+      set(state => ({
         bots: [bot, ...state.bots],
         selectedBotId: bot.id,
         lastFetched: Date.now(),
@@ -195,7 +188,7 @@ export const useBotStore = create<BotStore>((set, get) => ({
 
       const state = get();
       const originalBot = state.bots.find(b => b.id === botId);
-      
+
       if (!originalBot) {
         throw new Error('Bot not found');
       }
@@ -235,17 +228,63 @@ export const useBotStore = create<BotStore>((set, get) => ({
 
       const newBot = data as Bot;
 
-      set(state => ({ 
+      set(state => ({
         bots: [newBot, ...state.bots],
         selectedBotId: newBot.id,
         lastFetched: Date.now(),
         error: null
       }));
 
+      // If original bot was an agent, auto-sync the new one
+      if (originalBot.is_agent) {
+        console.log('[useBotStore] Original bot is an agent, attempting auto-sync for:', newBot.id);
+        toast({
+          title: "Creating Agent...",
+          description: "Syncing your new bot with Ultravox.",
+        });
+
+        try {
+          const syncedAgent = await agentService.syncAgent(newBot.id);
+          console.log('[useBotStore] Auto-sync successful:', syncedAgent);
+
+          toast({
+            title: "Agent Created",
+            description: "Your bot has been duplicated and synced successfully.",
+          });
+
+          // Update local state with synced data
+          const fullySyncedBot = { ...newBot, ...syncedAgent };
+
+          set(state => ({
+            bots: state.bots.map(b => b.id === newBot.id ? fullySyncedBot : b),
+            selectedBotId: newBot.id,
+            lastFetched: Date.now(),
+            error: null
+          }));
+
+          return fullySyncedBot;
+        } catch (syncError) {
+          console.error('[useBotStore] Failed to auto-sync duplicated agent:', syncError);
+          toast({
+            title: "Sync Failed",
+            description: "Bot duplicated but failed to sync. Please click 'Sync Agent' manually.",
+            variant: "destructive",
+          });
+          // Don't fail the whole operation, just return the unsynced bot
+        }
+      } else {
+        console.log('[useBotStore] Original bot is NOT an agent, skipping auto-sync');
+      }
+
       return newBot;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to duplicate bot';
       set({ error: errorMessage });
+      toast({
+        title: "Duplication Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
       throw error;
     } finally {
       set({ isLoading: false });

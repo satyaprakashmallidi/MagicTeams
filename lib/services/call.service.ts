@@ -366,6 +366,7 @@ export class CallService {
 
       const botId = callConfig.botId;
       const transferTo = callConfig.transfer_to; // Store in local variable
+      let bot: Bot | null = null;
 
       if (transferTo) {
         console.log(`Call transfer feature enabled for number: ${transferTo}`);
@@ -373,134 +374,192 @@ export class CallService {
 
       // Check if bot is active
       if (botId) {
-        const bot = await this.supabaseService.getLatestBotData(botId);
+        bot = await this.supabaseService.getLatestBotData(botId);
         if (bot && bot.is_enabled === false) {
           console.warn(`[CallService] Blocked call for inactive bot: ${botId}`);
           return { error: "This agent is currently inactive. Please enable it to make calls." };
         }
       }
 
-      const user_id = (await this.supabaseService.getUserId()) || "error-getting-user-id";
+      // New Agent-based call logic
+      if (bot && bot.is_agent && bot.ultravox_agent_id) {
+        console.log(`[CallService] Using Agent-based call for bot: ${botId}`);
+        console.log(`[CallService] Agent ID: ${bot.ultravox_agent_id}`);
 
-      if (showDebugMessages) {
-        console.log("user_id", user_id);
-      }
+        const agentCallConfig: Partial<AgentCallConfig> = {
+          agent_id: bot.ultravox_agent_id,
+          override_voice: callConfig.voice,
+          to_number: callConfig.to_number,
+          from_number: callConfig.from_number,
+          override_variables: callConfig.placeholders,
+        };
 
-      callConfig.metadata = {
-        "user_id": user_id,
-        "bot_id": botId || "error-getting-bot-id"
-      };
-
-      // Add transferTo to metadata if available
-      if (transferTo) {
-        console.log(`Adding transfer number to call metadata: ${transferTo}`);
-        callConfig.metadata["transferTo"] = transferTo;
-      }
-
-      if (showDebugMessages) {
-        console.log(`Using model ${callConfig.model}`);
-      }
-      console.log("Call configuration:", {
-        modelProvided: !!callConfig.model,
-        voiceProvided: !!callConfig.voice,
-        metadata: callConfig.metadata,
-        hasTransferTo: !!transferTo
-      });
-
-      callConfig.tools = callConfig.tools || [];
-
-      // Wrap the user's system prompt with the appointment booking template
-      if (callConfig.systemPrompt) {
-        console.log("Enhancing system prompt with appointment booking template...");
-        const originalLength = callConfig.systemPrompt.length;
-        callConfig.systemPrompt = getAppointmentBookingTemplate(callConfig.systemPrompt);
-        console.log(`System prompt enhanced (length: ${originalLength} → ${callConfig.systemPrompt.length})`);
-      }
-
-      // Always configure transfer tool (user will provide number dynamically during call)
-      console.log("Configuring dynamic transfer tool...");
-      await this.configureTransferTool(callConfig);
-      console.log("Original system prompt:", callConfig.systemPrompt);
-      // callConfig.systemPrompt = getAppointmentBookingTemplate(callConfig.systemPrompt);
-      console.log("Enhanced system prompt with template applied");
-
-      await this.configureAppointments(callConfig);
-      // await this.configureKnowledgeBase(callConfig); this is not needed anymore it is coming form the froned already
-      await this.configureEndCallTool(callConfig);
-      // await this.configureConversationStateTool(callConfig);
-
-      if (callConfig.tools) {
-        console.log(`Total tools configured: ${callConfig.tools.length}`);
-        console.log("Tool names:", callConfig.tools.map(tool =>
-          tool.toolName || tool.temporaryTool?.modelToolName || 'unnamed tool'
-        ));
-      }
-
-      callConfig.experimentalSettings = {
-        backSeatDriver: true
-      }
-
-      callConfig.recordingEnabled = true;
-      callConfig.maxDuration = "600s";
-
-      console.log("Final call configuration prepared:", {
-        recordingEnabled: callConfig.recordingEnabled,
-        maxDuration: callConfig.maxDuration,
-        toolsCount: callConfig.tools?.length || 0,
-        transferEnabled: !!transferTo
-      });
-
-      callConfig.temperature = (callConfig.temperature || 0) / 10;
-
-      // Remove properties not accepted by the Ultravox API
-      delete callConfig.botId;
-      if (transferTo) {
-        console.log("Removing transferTo from API request (will only be passed in metadata)");
-        delete callConfig.transfer_to; // Remove before sending to API
-      }
-
-      console.log("Making API request to create call...");
-      const response = await fetch(env.NEXT_PUBLIC_BACKEND_URL_WORKER + `/api/ultravox/createcall`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(callConfig),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("API Error Response:", {
-          status: response.status,
-          statusText: response.statusText,
-          body: errorText.substring(0, 1000) // Truncate if too long
+        console.log("Making API request to create agent-based call...", agentCallConfig);
+        const response = await fetch(env.NEXT_PUBLIC_BACKEND_URL_WORKER + `/api/ultravox/createcall`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(agentCallConfig),
         });
-        throw new Error(
-          `HTTP error! status: ${response.status}, message: ${errorText}`
-        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("API Error Response:", {
+            status: response.status,
+            statusText: response.statusText,
+            body: errorText.substring(0, 1000) // Truncate if too long
+          });
+          throw new Error(
+            `HTTP error! status: ${response.status}, message: ${errorText}`
+          );
+        }
+
+        const data = await response.json();
+        console.log("API Response:", {
+          success: true,
+          callId: data.data.callId,
+          joinUrlProvided: !!data.data.joinUrl
+        });
+
+        await this.supabaseService.saveToCallRecord({
+          callId: data.data.callId,
+          botId: botId || ""
+        });
+
+        this.saveCalltoDB({
+          callId: data.data.callId,
+          botId: botId || ""
+        });
+
+        console.log(`Call created successfully, ID: ${data.data.callId}`);
+        console.log("=== CREATE CALL COMPLETED ===");
+        return data.data;
+
+      } else {
+        console.log(`[CallService] Using legacy call creation for bot: ${botId}`);
+        // Fallback to legacy call creation
+        const user_id = (await this.supabaseService.getUserId()) || "error-getting-user-id";
+
+        if (showDebugMessages) {
+          console.log("user_id", user_id);
+        }
+
+        callConfig.metadata = {
+          "user_id": user_id,
+          "bot_id": botId || "error-getting-bot-id"
+        };
+
+        // Add transferTo to metadata if available
+        if (transferTo) {
+          console.log(`Adding transfer number to call metadata: ${transferTo}`);
+          callConfig.metadata["transferTo"] = transferTo;
+        }
+
+        if (showDebugMessages) {
+          console.log(`Using model ${callConfig.model}`);
+        }
+        console.log("Call configuration:", {
+          modelProvided: !!callConfig.model,
+          voiceProvided: !!callConfig.voice,
+          metadata: callConfig.metadata,
+          hasTransferTo: !!transferTo
+        });
+
+        callConfig.tools = callConfig.tools || [];
+
+        // Wrap the user's system prompt with the appointment booking template
+        if (callConfig.systemPrompt) {
+          console.log("Enhancing system prompt with appointment booking template...");
+          const originalLength = callConfig.systemPrompt.length;
+          callConfig.systemPrompt = getAppointmentBookingTemplate(callConfig.systemPrompt);
+          console.log(`System prompt enhanced (length: ${originalLength} → ${callConfig.systemPrompt.length})`);
+        }
+
+        // Always configure transfer tool (user will provide number dynamically during call)
+        console.log("Configuring dynamic transfer tool...");
+        await this.configureTransferTool(callConfig);
+        console.log("Original system prompt:", callConfig.systemPrompt);
+        // callConfig.systemPrompt = getAppointmentBookingTemplate(callConfig.systemPrompt);
+        console.log("Enhanced system prompt with template applied");
+
+        await this.configureAppointments(callConfig);
+        // await this.configureKnowledgeBase(callConfig); this is not needed anymore it is coming form the froned already
+        await this.configureEndCallTool(callConfig);
+        // await this.configureConversationStateTool(callConfig);
+
+        if (callConfig.tools) {
+          console.log(`Total tools configured: ${callConfig.tools.length}`);
+          console.log("Tool names:", callConfig.tools.map(tool =>
+            tool.toolName || tool.temporaryTool?.modelToolName || 'unnamed tool'
+          ));
+        }
+
+        callConfig.experimentalSettings = {
+          backSeatDriver: true
+        }
+
+        callConfig.recordingEnabled = true;
+        callConfig.maxDuration = "600s";
+
+        console.log("Final call configuration prepared:", {
+          recordingEnabled: callConfig.recordingEnabled,
+          maxDuration: callConfig.maxDuration,
+          toolsCount: callConfig.tools?.length || 0,
+          transferEnabled: !!transferTo
+        });
+
+        callConfig.temperature = (callConfig.temperature || 0) / 10;
+
+        // Remove properties not accepted by the Ultravox API
+        delete callConfig.botId;
+        if (transferTo) {
+          console.log("Removing transferTo from API request (will only be passed in metadata)");
+          delete callConfig.transfer_to; // Remove before sending to API
+        }
+
+        console.log("Making API request to create call...");
+        const response = await fetch(env.NEXT_PUBLIC_BACKEND_URL_WORKER + `/api/ultravox/createcall`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(callConfig),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("API Error Response:", {
+            status: response.status,
+            statusText: response.statusText,
+            body: errorText.substring(0, 1000) // Truncate if too long
+          });
+          throw new Error(
+            `HTTP error! status: ${response.status}, message: ${errorText}`
+          );
+        }
+
+        const data = await response.json();
+        console.log("API Response:", {
+          success: true,
+          callId: data.data.callId,
+          joinUrlProvided: !!data.data.joinUrl
+        });
+
+        await this.supabaseService.saveToCallRecord({
+          callId: data.data.callId,
+          botId: botId || ""
+        });
+
+        this.saveCalltoDB({
+          callId: data.data.callId,
+          botId: botId || ""
+        });
+
+        console.log(`Call created successfully, ID: ${data.data.callId}`);
+        console.log("=== CREATE CALL COMPLETED ===");
+        return data.data;
       }
-
-      const data = await response.json();
-      console.log("API Response:", {
-        success: true,
-        callId: data.data.callId,
-        joinUrlProvided: !!data.data.joinUrl
-      });
-
-      await this.supabaseService.saveToCallRecord({
-        callId: data.data.callId,
-        botId: botId || ""
-      });
-
-      this.saveCalltoDB({
-        callId: data.data.callId,
-        botId: botId || ""
-      });
-
-      console.log(`Call created successfully, ID: ${data.data.callId}`);
-      console.log("=== CREATE CALL COMPLETED ===");
-      return data.data;
-
     } catch (error) {
       console.error("=== CREATE CALL ERROR ===");
       console.error("Error details:", error);

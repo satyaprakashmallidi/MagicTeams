@@ -253,34 +253,81 @@ interface HttpAuthRequirement {
   scheme: string;
 }
 
-export interface CallConfig {
-  systemPrompt: string;
-  model?: string;
-  languageHint?: string;
-  tools?: SelectedTool[];
-  initialMessages?: Message[];
-  voice?: string;
-  temperature?: number;
-  maxDuration?: string;
-  timeExceededMessage?: string;
-  callKey?: string;
-  recordingEnabled?: boolean;
-  medium?: {
-    twilio?: {};
-  };
-  botId?: string | null;
-  experimentalSettings?: {
-    backSeatDriver?: boolean;
-  };
-  metadata?: {
-    [key: string]: string;
-  };
-  transfer_to?: string;
-  from_number?: string;
+
+
+export interface AgentCallConfig {
+
+  agent_id: string;
+
+  override_voice?: string;
+
+  override_variables?: Record<string, string>;
+
   to_number?: string;
-  placeholders?: Record<string, string>;
-  firstSpeaker?: "FIRST_SPEAKER_AGENT" | "FIRST_SPEAKER_USER";
+
+  from_number?: string;
+
 }
+
+
+
+export interface CallConfig {
+
+  systemPrompt: string;
+
+  model?: string;
+
+  languageHint?: string;
+
+  tools?: SelectedTool[];
+
+  initialMessages?: Message[];
+
+  voice?: string;
+
+  temperature?: number;
+
+  maxDuration?: string;
+
+  timeExceededMessage?: string;
+
+  callKey?: string;
+
+  recordingEnabled?: boolean;
+
+  medium?: {
+
+    twilio?: {};
+
+  };
+
+  botId?: string | null;
+
+  experimentalSettings?: {
+
+    backSeatDriver?: boolean;
+
+  };
+
+  metadata?: {
+
+    [key: string]: string;
+
+  };
+
+  transfer_to?: string;
+
+  from_number?: string;
+
+  to_number?: string;
+
+  placeholders?: Record<string, string>;
+
+  firstSpeaker?: "FIRST_SPEAKER_AGENT" | "FIRST_SPEAKER_USER";
+
+}
+
+
 
 export interface DemoConfig {
   title: string;

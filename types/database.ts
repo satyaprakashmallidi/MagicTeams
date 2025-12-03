@@ -36,6 +36,10 @@ export interface Bot {
   realtime_capture_fields?: RealtimeCaptureField[];
   first_speaker: "FIRST_SPEAKER_AGENT" | "FIRST_SPEAKER_USER";
   is_enabled: boolean;
+  is_agent?: boolean;
+  ultravox_agent_id?: string | null;
+  ultravox_published_revision_id?: string | null;
+  last_synced_at?: string | null;
 }
 
 export interface Transcript {
