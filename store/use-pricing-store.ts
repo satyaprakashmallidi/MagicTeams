@@ -11,14 +11,16 @@ interface PricingData {
 }
 
 interface PricingState {
-    time: number;
+    time: number;           // Total time (Agency + Direct)
+    agencyTime: number;     // Agency specific time
+    directTime: number;     // Direct specific time
     isTwilioAllowed: boolean;
     callStarted: boolean;
     costPerMinute: number;
     isLoading: boolean;
     error: string | null;
     lastFetched: number | null;
-    userType?: 'agency' | 'direct';
+    userType?: 'agency' | 'direct' | 'both';
 }
 
 interface PricingActions {
@@ -45,6 +47,8 @@ const DEFAULT_PRICING: Omit<PricingData, 'user_id'> = {
 export const usePricingToolsStore = create<PricingStore>((set, get) => ({
     // Initial State
     time: DEFAULT_PRICING.time_rem,
+    agencyTime: 0,
+    directTime: 0,
     isTwilioAllowed: DEFAULT_PRICING.is_twilio_allowed,
     callStarted: false,
     costPerMinute: DEFAULT_PRICING.cost,
@@ -87,12 +91,14 @@ export const usePricingToolsStore = create<PricingStore>((set, get) => ({
             console.log('[PricingStore] Balance fetched:', {
                 userType: balanceResult.userType,
                 balance: balanceResult.balance,
-                total: balanceResult.total,
-                used: balanceResult.used
+                agency: balanceResult.agencyBalance,
+                direct: balanceResult.directBalance
             });
 
             set({
                 time: balanceResult.balance,
+                agencyTime: balanceResult.agencyBalance,
+                directTime: balanceResult.directBalance,
                 isTwilioAllowed: true, // Default to true for now
                 costPerMinute: balanceResult.costPerMinute || DEFAULT_PRICING.cost,
                 lastFetched: now,
@@ -151,12 +157,9 @@ export const usePricingToolsStore = create<PricingStore>((set, get) => ({
                 }
             }
 
-            set({
-                time: data.time_rem,
-                isTwilioAllowed: data.is_twilio_allowed,
-                costPerMinute: data.cost,
-                lastFetched: Date.now()
-            });
+            // Refresh full state after update to ensure sync
+            await get().fetchPricingTools();
+
         } catch (error) {
             set({ error: error instanceof Error ? error.message : 'Failed to update pricing' });
         } finally {
@@ -204,6 +207,8 @@ export const usePricingToolsStore = create<PricingStore>((set, get) => ({
 
             set({
                 time: DEFAULT_PRICING.time_rem,
+                agencyTime: 0,
+                directTime: DEFAULT_PRICING.time_rem,
                 isTwilioAllowed: DEFAULT_PRICING.is_twilio_allowed,
                 costPerMinute: DEFAULT_PRICING.cost,
                 lastFetched: Date.now()
@@ -217,7 +222,8 @@ export const usePricingToolsStore = create<PricingStore>((set, get) => ({
 
     updateTimeRemaining: async (timeUsed) => {
         try {
-            set({ isLoading: true, error: null });
+            // Don't set loading true here as it might cause UI flicker during active calls
+            // set({ isLoading: true, error: null });
 
             const userId = await useAuthStore.getState().getUserId();
             if (!userId) {
@@ -232,15 +238,17 @@ export const usePricingToolsStore = create<PricingStore>((set, get) => ({
             const result = await MinuteBalanceService.deductMinutes(userId, timeUsed);
 
             if (result.success) {
-                console.log(`[PricingStore] Minutes deducted successfully. New balance: ${result.newBalance} seconds`);
+                console.log(`[PricingStore] Minutes deducted successfully.New balance: ${result.newBalance} seconds`);
                 set({
                     time: result.newBalance,
+                    agencyTime: result.newAgencyBalance,
+                    directTime: result.newDirectBalance,
                     lastFetched: Date.now()
                 });
             } else {
                 console.error('[PricingStore] Failed to deduct minutes:', result.error);
 
-                // Optimistically update UI even if backend fails
+                // Optimistically update UI even if backend fails (fallback logic)
                 const newTime = Math.max(0, state.time - timeUsed);
                 set({
                     time: newTime,
