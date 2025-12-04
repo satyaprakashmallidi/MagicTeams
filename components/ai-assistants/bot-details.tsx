@@ -77,6 +77,7 @@ export function BotDetails() {
   const transcriptContainerRef = useRef<HTMLDivElement>(null);
   const [isPromptDialogOpen, setIsPromptDialogOpen] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const { toast } = useToast();
   const {
@@ -88,6 +89,37 @@ export function BotDetails() {
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
   });
+
+  const handleSync = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    if (!botId) return;
+
+    setIsSyncing(true);
+    logAgentSync(botId, { action: "SYNC_BUTTON_CLICK" });
+
+    try {
+      const response = await agentService.syncAgent(botId);
+      // Update local state with the synced data
+      updateBot(botId, response.data);
+
+      toast({
+        title: "Agent Synced",
+        description: "The bot is now synced with the agent service.",
+      });
+      logAgentSync(botId, { action: "SYNC_SUCCESS" });
+    } catch (error: any) {
+      console.error("Error syncing agent:", error);
+      toast({
+        title: "Sync Failed",
+        description: error.message || "Could not sync the agent. Please try again.",
+        variant: "destructive",
+      });
+      logAgentSync(botId, { action: "SYNC_ERROR", error: error.message });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
 
   const { isTwilioAllowed: twilioAllowed, setCallStarted, callStarted, time } = usePricing();
   const { voices, error: voicesError, isLoading: voicesLoading, twilioInfo: twilioNumbers = [] } = useVoices();
@@ -1242,10 +1274,35 @@ For product questions or after-hours emergencies, direct clients to contact our 
             </div>
 
 
-            <Button type="submit" disabled={loading}>
-              {loading ? "Saving..." : "Save Changes"}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button type="submit" disabled={loading || isSyncing}>
+                {loading ? "Saving..." : "Save Changes"}
+              </Button>
+              {currentBot && (!currentBot.is_agent || !currentBot.last_synced_at) && (
+                <Button variant="outline" onClick={handleSync} disabled={isSyncing}>
+                  {isSyncing ? "Syncing..." : "Sync Agent"}
+                </Button>
+              )}
+            </div>
           </form>
+        </div>
+        <div className="bg-card p-4 rounded-lg shadow-sm text-sm">
+          <h3 className="font-semibold mb-2">Agent Status</h3>
+          {currentBot?.is_agent ? (
+            <div className="flex items-center gap-2">
+              <Badge variant="success">Managed Agent</Badge>
+              <span className="text-muted-foreground">
+                Last Synced: {currentBot.last_synced_at ? new Date(currentBot.last_synced_at).toLocaleString() : 'Never'}
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">Legacy Bot</Badge>
+              <span className="text-muted-foreground">
+                Sync to enable agent-based calls.
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
