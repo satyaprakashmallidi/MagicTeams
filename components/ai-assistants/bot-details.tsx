@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { supabase } from "@/lib/supabase";
@@ -25,7 +25,6 @@ import { Slider } from "@/components/ui/slider";
 import { startCall, endCall, startTwilioCall } from "@/lib/callFunctions";
 import { Transcript, UltravoxSessionStatus } from "ultravox-client";
 import { CallConfig, TwilioConfig } from "@/lib/types";
-import { BotAppointmentConfig } from "./bot-appointment-config";
 import { BotToggle } from "./bot-toggle";
 import { BotSettingsDialog } from "./bot-settings-dialog";
 import { useVoices } from "@/hooks/use-voices";
@@ -40,6 +39,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Bot, CustomQuestion, RealtimeCaptureField } from "@/types/database";
 import { useUser } from "@/hooks/use-user";
@@ -47,6 +51,7 @@ import { agentService } from "@/lib/services/agent.service";
 import { logBotOperation, logAgentSync } from "@/lib/utils/api-logger";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { useAppointmentTools } from '@/hooks/use-appointments';
 
 
 
@@ -61,6 +66,10 @@ const formSchema = z.object({
   twilio_phone_number: z.string().optional(),
   model: z.enum(["ultravox-v0.7"]).default("ultravox-v0.7"),
   first_speaker: z.enum(["FIRST_SPEAKER_AGENT", "FIRST_SPEAKER_USER"]).default("FIRST_SPEAKER_AGENT"),
+  is_appointment_booking_allowed: z.boolean().default(false),
+  appointment_tool_id: z.string().optional(),
+  is_call_transfer_allowed: z.boolean().default(false),
+  call_transfer_number: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -85,10 +94,13 @@ export function BotDetails() {
     handleSubmit,
     setValue,
     watch,
-    formState: { errors },
+    control,
+    formState,
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
+    mode: 'onChange',
   });
+  const { errors } = formState;
 
   const handleSync = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -120,12 +132,35 @@ export function BotDetails() {
     }
   };
 
+  const formatLastSynced = (dateString: string | null) => {
+    if (!dateString) return 'Never';
+
+    const date = new Date(dateString);
+
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+    const year = date.getFullYear();
+
+    const formattedDate = `${day}-${month}-${year}`;
+
+    const formattedTime = date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+
+    return `${formattedDate} ${formattedTime}`;
+  };
+
 
   const { isTwilioAllowed: twilioAllowed, setCallStarted, callStarted, time } = usePricing();
   const { voices, error: voicesError, isLoading: voicesLoading, twilioInfo: twilioNumbers = [] } = useVoices();
   const { selectedBotId: botId, bots, updateBot, duplicateBot } = useBots();
+  const { tools: appointmentTools } = useAppointmentTools();
   const selectedVoice = watch("voice");
   const selectedTwilioNumber = watch("twilio_phone_number");
+  const isAppointmentBookingAllowed = watch('is_appointment_booking_allowed');
+  const isCallTransferAllowed = watch('is_call_transfer_allowed');
   const { knowledgeBases } = useKnowledgeBase();
   const { user } = useUser();
   const [selectedKnowledgeBase, setSelectedKnowledgeBase] = useState<string | null>(null);
@@ -134,10 +169,10 @@ export function BotDetails() {
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
   const [originalSelectedTools, setOriginalSelectedTools] = useState<string[]>([]);
   const [toolsLoading, setToolsLoading] = useState(false);
-  const [isToolsDropdownOpen, setIsToolsDropdownOpen] = useState(false);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
+    const [isToolsDropdownOpen, setIsToolsDropdownOpen] = useState(false);
+  
+    // Close dropdown when clicking outside
+    useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (isToolsDropdownOpen && !(event.target as Element).closest('.tools-dropdown')) {
         setIsToolsDropdownOpen(false);
@@ -241,12 +276,18 @@ export function BotDetails() {
     setValue("system_prompt", bot.system_prompt || '');
     setValue("temperature", bot.temperature || 0);
     setValue("twilio_phone_number", bot.twilio_phone_number || '');
-    setValue("model", (bot.model as "ultravox-v0.7") || 'ultravox-v0.7');
+    setValue("model", 'ultravox-v0.7'); // Force model to the currently allowed valid enum value
     setValue("first_speaker", bot.first_speaker || 'FIRST_SPEAKER_AGENT');
+    
+    // Set appointment and call transfer settings
+    setValue("is_appointment_booking_allowed", bot.is_appointment_booking_allowed || false);
+    setValue("appointment_tool_id", bot.appointment_tool_id || undefined);
+    setValue("is_call_transfer_allowed", bot.is_call_transfer_allowed || false);
+    setValue("call_transfer_number", bot.call_transfer_number || '');
 
 
-    // Set selected tools
-    const botSelectedTools = (bot as any).selected_tools || [];
+    // Set selected tools, filtering out the system 'hangUp' tool from the user-facing selection
+    const botSelectedTools = ((bot as any).selected_tools || []).filter((toolId: string) => toolId !== 'hangUp');
     setValue("selected_tools", botSelectedTools);
     setSelectedTools(botSelectedTools);
     setOriginalSelectedTools(botSelectedTools);
@@ -311,9 +352,6 @@ export function BotDetails() {
   };
 
   const onSubmit = async (data: FormData) => {
-    console.log("Form submitted! This should only happen when Save Changes is clicked.");
-    console.log("Submit triggered by:", new Error().stack);
-
     // Sync the selected tools to form state before submission
     setValue("selected_tools", selectedTools);
 
@@ -334,22 +372,6 @@ export function BotDetails() {
         changes: data,
       });
 
-      // Prepare the update data
-      const updateData = {
-        name: data.name,
-        phone_number: data.phone_number || "",
-        voice: data.voice,
-        system_prompt: data.system_prompt,
-        knowledge_base_id: data.knowledge_base_id || "",
-        temperature: data.temperature || 0,
-        twilio_phone_number: data.twilio_phone_number || "",
-        model: "ultravox-v0.7", // Force ultravox-v0.7
-        first_speaker: data.first_speaker,
-      };
-
-      // ALL BOTS NOW USE AGENT API
-      logBotOperation("UPDATE_VIA_AGENT_API", { bot_id: botId });
-
       const bot = bots.find((b) => b.id === botId);
 
       // Step 1: Update agent via Worker API
@@ -359,25 +381,39 @@ export function BotDetails() {
         voice_id: data.voice,
         system_prompt: data.system_prompt,
         twilio_from_number: data.twilio_phone_number,
-        // Additional fields
-        model: "ultravox-v0.7", // Force ultravox-v0.7
+        model: "ultravox-v0.7",
         temperature: data.temperature,
         first_speaker: data.first_speaker,
         selected_tools: selectedTools,
         knowledge_base_id: data.knowledge_base_id || undefined,
-        is_appointment_booking_allowed: bot?.is_appointment_booking_allowed,
-        appointment_tool_id: bot?.appointment_tool_id,
-        is_call_transfer_allowed: bot?.is_call_transfer_allowed,
-        call_transfer_number: bot?.call_transfer_number,
+        is_appointment_booking_allowed: data.is_appointment_booking_allowed,
+        appointment_tool_id: data.appointment_tool_id,
+        is_call_transfer_allowed: data.is_call_transfer_allowed,
+        call_transfer_number: data.call_transfer_number,
       });
+
+      // Prepare the update data for Supabase
+      const updateData = {
+        name: data.name,
+        phone_number: data.phone_number || "",
+        voice: data.voice,
+        system_prompt: data.system_prompt,
+        knowledge_base_id: data.knowledge_base_id || "",
+        temperature: data.temperature || 0,
+        twilio_phone_number: data.twilio_phone_number || "",
+        model: "ultravox-v0.7",
+        first_speaker: data.first_speaker,
+        is_appointment_booking_allowed: data.is_appointment_booking_allowed,
+        appointment_tool_id: data.appointment_tool_id,
+        is_call_transfer_allowed: data.is_call_transfer_allowed,
+        call_transfer_number: data.call_transfer_number,
+        selected_tools: selectedTools,
+      };
 
       // Also update Supabase for local consistency
       const { error: supabaseError } = await supabase
         .from("bots")
-        .update({
-          ...updateData,
-          selected_tools: selectedTools,
-        })
+        .update(updateData)
         .eq("id", botId);
 
       if (supabaseError) {
@@ -388,7 +424,6 @@ export function BotDetails() {
       updateBot(botId, {
         ...bots.find(b => b.id === botId),
         ...updateData,
-        selected_tools: selectedTools,
       } as Bot);
 
       // Update original tools after successful save
@@ -462,11 +497,6 @@ export function BotDetails() {
       return { [key]: toolIdentifier };
     });
 
-    // Always ensure hangUp tool is present.
-    if (!tools.some(t => 'toolName' in t && t.toolName === 'hangUp')) {
-      tools.push({ toolName: 'hangUp' });
-    }
-    
     return tools;
   };
 
@@ -799,6 +829,11 @@ export function BotDetails() {
               </Button>
             </div>
           </div>
+          {currentBot?.is_agent && (
+            <div className="text-sm text-muted-foreground mb-4">
+              Last Synced: {formatLastSynced(currentBot.last_synced_at)}
+            </div>
+          )}
           <form
             onSubmit={handleSubmit(onSubmit)}
             className="space-y-4"
@@ -809,51 +844,56 @@ export function BotDetails() {
               }
             }}
           >
-            <div>
-              <Label htmlFor="name">Bot Name</Label>
-              <Input
-                id="name"
-                {...register("name")}
-                placeholder="My Assistant"
-              />
-              {errors.name && (
-                <p className="text-sm text-red-500">{errors.name.message}</p>
-              )}
-            </div>
-
-            <div className="flex items-center justify-between text-sm text-muted-foreground bg-muted p-2 rounded-md">
-              <div className="flex items-center gap-2">
-                <Icon name="id" className="h-4 w-4" />
-                <span>Bot ID: {botId}</span>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="name">Bot Name</Label>
+                <Input
+                  id="name"
+                  {...register("name")}
+                  placeholder="My Assistant"
+                />
+                {errors.name && (
+                  <p className="text-sm text-red-500">{errors.name.message}</p>
+                )}
               </div>
-              <CopyButton value={botId || ''} label="Bot ID" />
+
+              <div className="flex flex-col gap-2"> {/* Added flex-col to match the input's structure */}
+                <Label>Bot ID</Label> {/* Added Label for consistency */}
+                <div className="flex items-center justify-between text-sm text-muted-foreground bg-muted p-2 rounded-md h-10"> {/* Added h-10 for height consistency */}
+                  <div className="flex items-center gap-2">
+                    <Icon name="id" className="h-4 w-4" />
+                    <span className="text-xs">{botId}</span> {/* Reduced font size */} {/* Removed "Bot ID:" as Label is now above */}
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div>
-              <Label htmlFor="phone_number">Phone Number (Optional)</Label>
-              <Input
-                id="phone_number"
-                {...register("phone_number")}
-                placeholder="+1234567890"
-              />
-              {errors.phone_number && (
-                <p className="text-sm text-red-500">
-                  {errors.phone_number.message}
-                </p>
-              )}
-            </div>
+
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="phone_number">Twilio Phone Number</Label>
+                <Label htmlFor="phone_number">Phone Number (Optional)</Label>
+                <Input
+                  id="phone_number"
+                  {...register("phone_number")}
+                  placeholder="+1234567890"
+                />
+                {errors.phone_number && (
+                  <p className="text-sm text-red-500">
+                    {errors.phone_number.message}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="twilio_phone_number">Twilio Phone Number</Label>
                 {loadingTwilioNumbers ? (
                   <div className="text-sm text-muted-foreground">
                     Loading phone numbers...
                   </div>
                 ) : twilioNumbers.length === 0 ? (
                   <div className="text-sm text-red-500">
-                    Please add your Twilio integration first to get available
-                    phone numbers.
+                    Please add your Twilio integration first.
                   </div>
                 ) : (
                   <Select
@@ -916,155 +956,105 @@ export function BotDetails() {
                   <p className="text-sm text-red-500">{errors.voice.message}</p>
                 )}
               </div>
-
-              {/* <div>
-                <Label htmlFor="model">Model</Label>
-                <Select
-                  onValueChange={(value: "fixie-ai/ultravox" | "fixie-ai/ultravox-gemma3-27b-preview" | "fixie-ai/ultravox-llama3.3-70b" | "fixie-ai/ultravox-glm4.5-355b-preview" | "fixie-ai/ultravox-qwen3-32b-preview") => setValue("model", value)}
-                  value={watch("model")}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a model" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ultravox-v0.7">v0.7 (Default)</SelectItem>
-                    <SelectItem value="fixie-ai/ultravox-gemma3-27b-preview">Gemma3-27b-Preview</SelectItem>
-                    <SelectItem value="fixie-ai/ultravox-llama3.3-70b">Llama3.3-70b</SelectItem>
-                    <SelectItem value="fixie-ai/ultravox-qwen3-32b-preview">Qwen3-32b-Preview</SelectItem>
-                    <SelectItem value="fixie-ai/ultravox-glm4.5-355b-preview">GLM4.5-355b-Preview</SelectItem>
-                    <SelectItem value="fixie-ai/ultravox">Legacy</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div> */}
             </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <Label htmlFor="system_prompt">System Prompt</Label>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-2"
-                    onClick={(e) => { e.preventDefault(); setIsPromptDialogOpen(true) }}
+            <div className="space-y-4"> {/* Use space-y-4 for vertical rhythm within the form */}
+              <div className="flex items-start justify-between gap-4">
+                <div className="w-1/2 flex flex-col gap-2">
+                  <Label>Knowledge Base</Label>
+                  <Select
+                    value={selectedKnowledgeBase || 'none'}
+                    onValueChange={(value) => {
+                      const kbId = value === 'none' ? null : value;
+                      setSelectedKnowledgeBase(kbId);
+                      setValue("knowledge_base_id", kbId || undefined);
+                    }}
                   >
-                    <Icon name="expand" className="h-4 w-4" />
-                    <span>Expand</span>
-                  </Button>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a knowledge base" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {knowledgeBases?.map((kb) => (kb?.ultravox_details?.stats?.status === "CORPUS_STATUS_READY" &&
+                        <SelectItem key={kb.corpus_id} value={kb.corpus_id}>
+                          {kb.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground">
+                    {knowledgeBases?.length === 0
+                      ? "No knowledge bases available."
+                      : "Select a knowledge base for the bot."
+                    }
+                  </p>
+                </div>
+                <div className="w-1/2 flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <Label>Tools</Label>
+                  </div>
+
+                  <Popover open={isToolsDropdownOpen} onOpenChange={setIsToolsDropdownOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={isToolsDropdownOpen}
+                        className="w-full justify-between h-10"
+                        onClick={(e) => { e.preventDefault(); setIsToolsDropdownOpen(!isToolsDropdownOpen); }}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Icon name="wrench" className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm font-medium">
+                            {selectedTools.length > 0 ? `${selectedTools.length} tool(s) selected` : 'Select tools'}
+                          </span>
+                        </div>
+                        <Icon name="chevrons-up-down" className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <div className="p-2">
+                          {toolsLoading ? (
+                            <div className="p-2 text-sm text-muted-foreground text-center">Loading...</div>
+                          ) : availableTools.length === 0 ? (
+                            <div className="p-2 text-sm text-muted-foreground text-center">
+                              No tools available.
+                            </div>
+                          ) : (
+                            <div className="mt-1 space-y-1 max-h-48 overflow-y-auto">
+                              {availableTools.map((tool) => (
+                                <div
+                                  key={tool.toolId}
+                                  className="flex items-center px-2 py-1.5 hover:bg-accent rounded-md cursor-pointer"
+                                  onClick={() => {
+                                    const newSelectedTools = selectedTools.includes(tool.toolId)
+                                      ? selectedTools.filter(id => id !== tool.toolId)
+                                      : [...selectedTools, tool.toolId];
+                                    setSelectedTools(newSelectedTools);
+                                  }}
+                                >
+                                  <Checkbox
+                                    checked={selectedTools.includes(tool.toolId)}
+                                    readOnly
+                                    className="mr-2"
+                                  />
+                                  <span className="text-sm text-foreground">
+                                    {tool.name}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                    </PopoverContent>
+                  </Popover>
+
+                  <p className="text-sm text-muted-foreground">
+                    Select tools this bot can use.
+                  </p>
                 </div>
               </div>
-              <Textarea
-                id="system_prompt"
-                {...register("system_prompt")}
-                placeholder="Enter the system prompt..."
-                className="h-32"
-              />
-              {errors.system_prompt && (
-                <p className="text-sm text-red-500">
-                  {errors.system_prompt.message}
-                </p>
-              )}
-
-              <Dialog open={isPromptDialogOpen} onOpenChange={setIsPromptDialogOpen}>
-                <DialogContent className="max-w-[1200px] h-[80vh]">
-                  <DialogHeader>
-                    <DialogTitle>System Prompt</DialogTitle>
-                  </DialogHeader>
-                  <div className="flex flex-col gap-4">
-                    <div className="flex justify-end">
-                      <Select
-                        onValueChange={(value) => {
-                          if (value === "healthcare") {
-                            setValue("system_prompt", `# HealthCare Appointment Assistant
-
-## About MedCare Clinic
-- Specialties: General Medicine, Cardiology, Orthopedics, Pediatrics
-- Location: 123 Medical Drive, Healthcare City
-- Website: www.medcareclinic.example
-
-## Your Role
-- You are a friendly and professional appointment scheduler for MedCare Clinic
-- Your primary responsibility is booking appointments with the right specialist
-- Gather all necessary information for scheduling
-- Handle emergency situations with care and urgency
-- Maintain patient confidentiality
-
-## Special Instructions
-- For chest pain, shortness of breath, or stroke symptoms, direct patients to call emergency services
-- Ask about insurance details but reassure patients we accept most major insurance plans
-- Children under 18 must be accompanied by a guardian
-- For new patients, request they arrive 15 minutes early to complete paperwork
-- Inform patients about our 24-hour cancellation policy
-
-For further assistance, direct patients to contact our main desk at (555) 123-4567.`);
-                          } else if (value === "legal") {
-                            setValue("system_prompt", `# Legal Consultation Scheduler
-
-## About Smith & Associates Law Firm
-- Practice Areas: Family Law, Estate Planning, Corporate Law, Real Estate Law
-- Location: 456 Legal Avenue, Downtown
-- Website: www.smithlawfirm.example
-
-## Your Role
-- You are the professional consultation scheduler for Smith & Associates
-- Your job is to match clients with appropriate attorneys based on their legal needs
-- Gather case-specific information for efficient consultations
-- Maintain strict client confidentiality
-- Provide basic information about our services
-
-## Special Instructions
-- Ask about the nature of legal matter to assign the right attorney
-- Clarify if they have any deadlines or court dates already scheduled
-- Inform new clients about required identification and documentation
-- Mention our payment options and retainer requirements
-- For urgent legal matters (e.g., imminent court dates), prioritize scheduling
-
-For billing questions or urgent legal matters, please direct clients to call our office manager at (555) 987-6543.`);
-                          } else if (value === "salon") {
-                            setValue("system_prompt", `# Beauty Salon Appointment Assistant
-
-## About Elegance Beauty Salon
-- Services: Haircuts, Coloring, Styling, Manicures, Pedicures, Facials, Makeup
-- Location: 789 Style Street, Fashion District
-- Website: www.elegancebeauty.example
-
-## Your Role
-- You are the friendly appointment coordinator for Elegance Beauty Salon
-- Help clients book the right services with appropriate stylists
-- Provide accurate timing and pricing information
-- Handle special requests with care
-- Maintain a welcoming and professional demeanor
-
-## Special Instructions
-- Ask about previous experience with our salon and preferred stylists
-- For color services, ask about current hair color and desired result
-- Inform about cancellation policy (24-hour notice required)
-- For bridal or special event bookings, recommend scheduling a consultation first
-- Mention current promotions where appropriate
-
-For product questions or after-hours emergencies, direct clients to contact our manager at (555) 765-4321.`);
-                          }
-                        }}
-                      >
-                        <SelectTrigger className="w-[240px]">
-                          <SelectValue placeholder="Insert Example Prompt" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="healthcare">Healthcare Clinic</SelectItem>
-                          <SelectItem value="legal">Legal Consultation</SelectItem>
-                          <SelectItem value="salon">Beauty Salon</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <Textarea
-                      value={watch("system_prompt")}
-                      onChange={(e) => setValue("system_prompt", e.target.value)}
-                      className="min-h-[60vh] text-base"
-                      placeholder="Enter the system prompt..."
-                    />
-                  </div>
-                </DialogContent>
-              </Dialog>
             </div>
 
             <div className="space-y-2">
@@ -1089,190 +1079,49 @@ For product questions or after-hours emergencies, direct clients to contact our 
               )}
             </div>
 
-            {/* Knowledge Base Selection */}
-            <div className="flex items-center justify-between gap-4">
-              <div className="w-1/2 flex flex-col gap-2 align-start">
-                <Label>Knowledge Base</Label>
-                <Select
-                  value={selectedKnowledgeBase || 'none'}
-                  onValueChange={(value) => {
-                    const kbId = value === 'none' ? null : value;
-                    setSelectedKnowledgeBase(kbId);
-                    setValue("knowledge_base_id", kbId || undefined);
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a knowledge base" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {knowledgeBases?.map((kb) => (kb?.ultravox_details?.stats?.status === "CORPUS_STATUS_READY" &&
-                      <SelectItem key={kb.corpus_id} value={kb.corpus_id}>
-                        {kb.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {
-                  (knowledgeBases?.length > 0 && knowledgeBases?.find((kb) => kb?.ultravox_details?.stats?.status !== "CORPUS_STATUS_READY")) ? (
-                    <p className="text-sm text-muted-foreground ">
-                      We can use any knowledge base only if it's status is ready.
-                    </p>
-                  ) :
-                    (
-                      <p className="text-sm text-muted-foreground ">
-                        This assistant will use the selected knowledge base to answer questions.
-                      </p>
-                    )
-                }
-                {
-                  knowledgeBases?.length === 0 && (
-                    <p className="text-sm text-muted-foreground ">
-                      We can't find any knowledge bases for this assistant. Please create a knowledge base first.
-                    </p>
-                  )
-                }
-              </div>
-              <div className="w-1/2 flex flex-col gap-2 align-start">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label htmlFor="system_prompt">System Prompt</Label>
                 <div className="flex items-center gap-2">
-                  <Label>Tools</Label>
-                  {JSON.stringify(selectedTools.sort()) !== JSON.stringify(originalSelectedTools.sort()) && (
-                    <span className="text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded-full">
-                      Modified
-                    </span>
-                  )}
-                </div>
-
-                {/* Tools Dropdown */}
-                <div
-                  className="relative tools-dropdown"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onSubmit={(e) => e.preventDefault()}
-                >
-                  <button
-                    type="button"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      console.log("Dropdown button clicked, preventing form submission");
-                      setIsToolsDropdownOpen(!isToolsDropdownOpen);
-                    }}
-                    className={`
-                    inline-flex items-center gap-2 px-4 py-2.5 
-                    bg-background rounded-lg border border-border
-                    hover:bg-accent active:bg-accent/80
-                    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                    transition-all duration-200 w-full justify-between
-                    ${isToolsDropdownOpen ? 'bg-accent ring-2 ring-primary' : ''}
-                  `}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
+                    onClick={(e) => { e.preventDefault(); setIsPromptDialogOpen(true) }}
                   >
-                    <div className="flex items-center gap-2">
-                      <Icon name="wrench" className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-sm font-medium text-foreground">
-                        {selectedTools.length > 0 ? `${selectedTools.length} tool(s) selected` : 'Select tools'}
-                      </span>
-                    </div>
-                    <Icon
-                      name={isToolsDropdownOpen ? "chevron-up" : "chevron-down"}
-                      className="w-4 h-4 text-muted-foreground"
-                    />
-                  </button>
-
-                  {/* Dropdown Panel */}
-                  {isToolsDropdownOpen && (
-                    <div
-                      className="absolute left-0 mt-2 w-full bg-popover rounded-lg shadow-xl border border-border z-50"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onSubmit={(e) => e.preventDefault()}
-                    >
-                      <div className="p-3">
-                        <div className="flex items-center justify-between pb-2 border-b border-border">
-                          <span className="text-sm font-semibold text-foreground">Available Tools</span>
-                          <span className="text-xs text-muted-foreground">{selectedTools.length} selected</span>
-                        </div>
-
-                        {toolsLoading ? (
-                          <div className="p-3 text-sm text-muted-foreground text-center">Loading tools...</div>
-                        ) : availableTools.length === 0 ? (
-                          <div className="p-3 text-sm text-muted-foreground text-center">
-                            No tools available. Create tools first to use them with bots.
-                          </div>
-                        ) : (
-                          <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
-                            {availableTools.map((tool) => (
-                              <div
-                                key={tool.toolId}
-                                className="flex items-center px-3 py-2 hover:bg-accent rounded-md cursor-pointer"
-                                onMouseDown={(e) => e.preventDefault()}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  console.log("Tool item clicked, preventing form submission");
-                                  const newSelectedTools = selectedTools.includes(tool.toolId)
-                                    ? selectedTools.filter(id => id !== tool.toolId)
-                                    : [...selectedTools, tool.toolId];
-                                  setSelectedTools(newSelectedTools);
-                                  // Don't update form state until save is clicked
-                                }}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={selectedTools.includes(tool.toolId)}
-                                  onChange={() => { }} // Handle change through parent div click
-                                  onMouseDown={(e) => e.preventDefault()}
-                                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                />
-                                <span className="ml-3 text-sm text-foreground">
-                                  {tool.name}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Selected Tools Display */}
-                {/* {selectedTools.length > 0 && (
-                <div className="mt-3">
-                  <div className="text-sm font-medium text-foreground mb-2">Selected Tools:</div>
-                  <div className="space-y-1 max-h-32 overflow-y-auto border rounded-md p-2">
-                    {selectedTools.map((toolId) => {
-                      const tool = availableTools.find(t => t.toolId === toolId);
-                      return (
-                        <div key={toolId} className="flex items-center justify-between bg-muted p-2 rounded text-sm">
-                          <span className="text-foreground">{tool?.name || toolId}</span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              const newSelectedTools = selectedTools.filter(id => id !== toolId);
-                              setSelectedTools(newSelectedTools);
-                              // Don't update form state until save is clicked
-                            }}
-                            className="h-6 w-6 p-0 hover:bg-muted/80"
-                          >
-                            <Icon name="x" className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )} */}
-
-                <div className="text-sm text-muted-foreground mb-2">
-                  Select tools that this bot can use during calls
+                    <Icon name="expand" className="h-4 w-4" />
+                    <span>Expand</span>
+                  </Button>
                 </div>
               </div>
-            </div>
+              <Textarea
+                id="system_prompt"
+                {...register("system_prompt")}
+                placeholder="Enter the system prompt..."
+                className="h-40 resize-none"
+              />
+              {errors.system_prompt && (
+                <p className="text-sm text-red-500">
+                  {errors.system_prompt.message}
+                </p>
+              )}
 
+              <Dialog open={isPromptDialogOpen} onOpenChange={setIsPromptDialogOpen}>
+                <DialogContent className="max-w-[1200px] h-[80vh]">
+                  <DialogHeader>
+                    <DialogTitle>System Prompt</DialogTitle>
+                  </DialogHeader>
+                  <div className="flex flex-col">
+                    <Textarea
+                      value={watch("system_prompt")}
+                      onChange={(e) => setValue("system_prompt", e.target.value)}
+                      className="min-h-[70vh] text-base resize-none"
+                      placeholder="Enter the system prompt..."
+                    />
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
 
             <div className="flex items-center gap-2">
               <Button type="submit" disabled={loading || isSyncing}>
@@ -1286,31 +1135,113 @@ For product questions or after-hours emergencies, direct clients to contact our 
             </div>
           </form>
         </div>
-        <div className="bg-card p-4 rounded-lg shadow-sm text-sm">
-          <h3 className="font-semibold mb-2">Agent Status</h3>
-          {currentBot?.is_agent ? (
-            <div className="flex items-center gap-2">
-              <Badge variant="success">Managed Agent</Badge>
-              <span className="text-muted-foreground">
-                Last Synced: {currentBot.last_synced_at ? new Date(currentBot.last_synced_at).toLocaleString() : 'Never'}
-              </span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary">Legacy Bot</Badge>
-              <span className="text-muted-foreground">
-                Sync to enable agent-based calls.
-              </span>
-            </div>
-          )}
-        </div>
+
       </div>
 
       {/* Right Panel - Actions & Transcripts */}
       <div className="w-1/2 space-y-6">
-        {/* Appointment Configuratio */}
-        {!isCallActive && <BotAppointmentConfig />}
 
+
+
+        {/* Appointment & Transfer Settings */}
+        <div className="bg-card p-6 rounded-lg shadow-sm grid grid-cols-2 gap-6">
+            <div className="space-y-4"> {/* Left Column: Appointment Booking */}
+                <div className="flex items-center justify-between">
+                    <div>
+                        <Label>Appointment Booking</Label>
+                        <p className="text-sm text-gray-500">
+                        Allow the bot to book appointments.
+                        </p>
+                    </div>
+                    <Controller
+                        name="is_appointment_booking_allowed"
+                        control={control}
+                        render={({ field }) => (
+                            <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            />
+                        )}
+                    />
+                </div>
+
+                {isAppointmentBookingAllowed && (
+                <div className="space-y-4 pt-4">
+                    <div>
+                    <Label>Select Appointment Tool</Label>
+                    <Controller
+                        name="appointment_tool_id"
+                        control={control}
+                        render={({ field }) => (
+                            <Select
+                                value={field.value}
+                                onValueChange={field.onChange}
+                                disabled={loading}
+                            >
+                                <SelectTrigger>
+                                <SelectValue placeholder="Choose a tool"  />
+                                </SelectTrigger>
+                                <SelectContent>
+                                {appointmentTools.length === 0 ? (
+                                    <div className="text-sm p-2 max-w-sm text-center">
+                                    No tools available.
+                                    </div>
+                                ) : 
+                                (
+                                    appointmentTools.map((tool) => (
+                                    <SelectItem key={tool.id} value={tool.id}>
+                                        {tool.name}
+                                    </SelectItem>
+                                    ))
+                                )}
+                                </SelectContent>
+                            </Select>
+                        )}
+                    />
+                    </div>
+                </div>
+                )}
+            </div>
+            
+            <div className='space-y-4'> {/* Right Column: Call Transfer */}
+                <div className="flex items-center justify-between">
+                    <div>
+                    <Label>Call Transfer</Label>
+                    <p className="text-sm text-gray-500">
+                        Enable call transfer.
+                    </p>
+                    </div>
+                    <Controller
+                        name="is_call_transfer_allowed"
+                        control={control}
+                        render={({ field }) => (
+                            <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            />
+                        )}
+                    />
+                </div>
+                
+                {isCallTransferAllowed && (
+                    <div className='pt-4'>
+                    <Label htmlFor="call_transfer_number">Transfer Phone Number</Label>
+                     <Controller
+                        name="call_transfer_number"
+                        control={control}
+                        render={({ field }) => (
+                            <Input
+                                {...field}
+                                id="call_transfer_number"
+                                placeholder="+1234567890"
+                                className="mt-1"
+                            />
+                        )}
+                    />
+                    </div>
+                )}
+            </div>
+        </div>
 
         {/* Actions Section */}
         <div className="bg-card p-6 rounded-lg shadow-sm space-y-4 mt-auto">
