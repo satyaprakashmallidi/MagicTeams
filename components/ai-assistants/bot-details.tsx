@@ -59,7 +59,7 @@ const formSchema = z.object({
   selected_tools: z.array(z.string()).default([]),
   temperature: z.number().min(0).max(10).default(0.7),
   twilio_phone_number: z.string().optional(),
-  model: z.enum(["fixie-ai/ultravox", "fixie-ai/ultravox-gemma3-27b-preview", "fixie-ai/ultravox-llama3.3-70b", "fixie-ai/ultravox-qwen3-32b-preview", "fixie-ai/ultravox-glm4.5-355b-preview"]).default("fixie-ai/ultravox"),
+  model: z.enum(["ultravox-v0.7"]).default("ultravox-v0.7"),
   first_speaker: z.enum(["FIRST_SPEAKER_AGENT", "FIRST_SPEAKER_USER"]).default("FIRST_SPEAKER_AGENT"),
 });
 
@@ -241,7 +241,7 @@ export function BotDetails() {
     setValue("system_prompt", bot.system_prompt || '');
     setValue("temperature", bot.temperature || 0);
     setValue("twilio_phone_number", bot.twilio_phone_number || '');
-    setValue("model", (bot.model as "fixie-ai/ultravox" | "fixie-ai/ultravox-gemma3-27b-preview" | "fixie-ai/ultravox-llama3.3-70b" | "fixie-ai/ultravox-glm4.5-355b-preview" | "fixie-ai/ultravox-qwen3-32b-preview") || 'fixie-ai/ultravox');
+    setValue("model", (bot.model as "ultravox-v0.7") || 'ultravox-v0.7');
     setValue("first_speaker", bot.first_speaker || 'FIRST_SPEAKER_AGENT');
 
 
@@ -343,7 +343,7 @@ export function BotDetails() {
         knowledge_base_id: data.knowledge_base_id || "",
         temperature: data.temperature || 0,
         twilio_phone_number: data.twilio_phone_number || "",
-        model: data.model,
+        model: "ultravox-v0.7", // Force ultravox-v0.7
         first_speaker: data.first_speaker,
       };
 
@@ -360,7 +360,7 @@ export function BotDetails() {
         system_prompt: data.system_prompt,
         twilio_from_number: data.twilio_phone_number,
         // Additional fields
-        model: data.model,
+        model: "ultravox-v0.7", // Force ultravox-v0.7
         temperature: data.temperature,
         first_speaker: data.first_speaker,
         selected_tools: selectedTools,
@@ -442,32 +442,31 @@ export function BotDetails() {
   );
 
   const buildCallTools = () => {
-    // Map selected tool IDs to tool objects; fallback to just toolName
-    let tools = selectedTools.map(toolId => {
-      // If it's the KB tool, and KB is selected, add queryCorpus with overrides
-      if (
-        selectedKnowledgeBase &&
-        knowledgeBases &&
-        toolId === selectedKnowledgeBase
-      ) {
-        const kb = knowledgeBases.find(kb => kb.corpus_id === toolId);
-        return kb
-          ? {
+    const isUuid = (str: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
+    
+    // Map selected tool IDs to tool objects
+    let tools = selectedTools.map(toolIdentifier => {
+      // If the identifier is for the selected knowledge base, transform it into a queryCorpus tool.
+      if (selectedKnowledgeBase && toolIdentifier === selectedKnowledgeBase) {
+        return {
             toolName: 'queryCorpus',
             parameterOverrides: {
-              corpus_id: kb.corpus_id,
+              corpus_id: selectedKnowledgeBase,
               max_results: 20
             }
-          }
-          : { toolName: toolId };
+          };
       }
-      // Otherwise just simple toolName
-      return { toolName: toolId };
+
+      // For all other identifiers, create the tool object with the correct key.
+      const key = isUuid(toolIdentifier) ? 'toolId' : 'toolName';
+      return { [key]: toolIdentifier };
     });
-    // Always allow hangUp
-    if (!tools.some(t => t.toolName === 'hangUp')) {
+
+    // Always ensure hangUp tool is present.
+    if (!tools.some(t => 'toolName' in t && t.toolName === 'hangUp')) {
       tools.push({ toolName: 'hangUp' });
     }
+    
     return tools;
   };
 
@@ -543,7 +542,7 @@ export function BotDetails() {
       tools: toolsForCall,
       temperature: watch("temperature"),
       transfer_to: transferNumber || undefined,
-      model: watch("model") || "fixie-ai/ultravox",
+      model: "ultravox-v0.7", // Force ultravox-v0.7
       firstSpeaker: watch("first_speaker") || "FIRST_SPEAKER_AGENT",
       metadata: {},
     };
@@ -690,7 +689,7 @@ export function BotDetails() {
       transfer_to: transferNumber || undefined,
       from_number: watch("twilio_phone_number"),
       to_number: watch("phone_number"),
-      model: watch("model") || "fixie-ai/ultravox",
+      model: "ultravox-v0.7", // Force ultravox-v0.7
       metadata: {
         botId: botId || "",
       },
@@ -918,7 +917,7 @@ export function BotDetails() {
                 )}
               </div>
 
-              <div>
+              {/* <div>
                 <Label htmlFor="model">Model</Label>
                 <Select
                   onValueChange={(value: "fixie-ai/ultravox" | "fixie-ai/ultravox-gemma3-27b-preview" | "fixie-ai/ultravox-llama3.3-70b" | "fixie-ai/ultravox-glm4.5-355b-preview" | "fixie-ai/ultravox-qwen3-32b-preview") => setValue("model", value)}
@@ -928,14 +927,15 @@ export function BotDetails() {
                     <SelectValue placeholder="Select a model" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="fixie-ai/ultravox">Default</SelectItem>
+                    <SelectItem value="ultravox-v0.7">v0.7 (Default)</SelectItem>
                     <SelectItem value="fixie-ai/ultravox-gemma3-27b-preview">Gemma3-27b-Preview</SelectItem>
                     <SelectItem value="fixie-ai/ultravox-llama3.3-70b">Llama3.3-70b</SelectItem>
                     <SelectItem value="fixie-ai/ultravox-qwen3-32b-preview">Qwen3-32b-Preview</SelectItem>
                     <SelectItem value="fixie-ai/ultravox-glm4.5-355b-preview">GLM4.5-355b-Preview</SelectItem>
+                    <SelectItem value="fixie-ai/ultravox">Legacy</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
+              </div> */}
             </div>
 
             <div>

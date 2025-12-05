@@ -29,9 +29,6 @@ const formSchema = z.object({
   name: z.string().min(2, {
     message: "Bot name must be at least 2 characters.",
   }),
-  model: z.string().min(1, {
-    message: "Please select a model.",
-  }),
   system_prompt: z.string().min(10, {
     message: "System prompt must be at least 10 characters.",
   }),
@@ -52,7 +49,7 @@ export function CreateBotForm({ onClose }: CreateBotFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
-      model: "fixie-ai/ultravox",
+      model: "ultravox-v0.7",
       system_prompt: "",
     },
   })
@@ -73,7 +70,7 @@ export function CreateBotForm({ onClose }: CreateBotFormProps) {
         name: data.name,
         voice_id: "lily", // Default voice
         system_prompt: data.system_prompt,
-        model: data.model,
+        model: "ultravox-v0.7", // Force ultravox-v0.7
         temperature: 7, // Default temperature
         first_speaker: "FIRST_SPEAKER_AGENT",
         selected_tools: ["hangUp"], // Default tool
@@ -135,7 +132,7 @@ export function CreateBotForm({ onClose }: CreateBotFormProps) {
               </FormItem>
             )}
           />
-          <FormField
+          {/* <FormField
             control={form.control}
             name="model"
             render={({ field }) => (
@@ -158,7 +155,7 @@ export function CreateBotForm({ onClose }: CreateBotFormProps) {
                 <FormMessage />
               </FormItem>
             )}
-          />
+          /> */}
           <FormField
             control={form.control}
             name="system_prompt"

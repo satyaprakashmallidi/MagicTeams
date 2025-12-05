@@ -210,7 +210,7 @@ export const useBotStore = create<BotStore>((set, get) => ({
         twilio_phone_number: originalBot.twilio_phone_number,
         is_call_transfer_allowed: originalBot.is_call_transfer_allowed || false,
         call_transfer_number: originalBot.call_transfer_number,
-        model: originalBot.model || 'fixie-ai/ultravox',
+        model: originalBot.model || 'ultravox-v0.7',
         custom_questions: originalBot.custom_questions ? JSON.parse(JSON.stringify(originalBot.custom_questions)) : [],
         selected_tools: originalBot.selected_tools ? [...originalBot.selected_tools] : [],
         first_speaker: originalBot.first_speaker,
