@@ -1,9 +1,8 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import dynamic from "next/dynamic";
-import "react18-json-view/src/style.css";
-const JsonView = dynamic(() => import("react18-json-view"), { ssr: false });
+import { ParameterLocation } from "@/lib/types";
+import ToolForm from "./tool-form";
 
 interface Tool {
   toolId?: string;
@@ -13,10 +12,20 @@ interface Tool {
 
 type Mode = "view" | "edit" | "create";
 
-const fieldExplanations: Record<string, string> = {
-  name: "A unique name for your tool.",
-  definition: "The full JSON definition of your tool. You can edit, add, or remove fields interactively.",
-};
+const TOOL_NAME_PATTERN = /^[a-zA-Z0-9_-]{1,64}$/;
+
+const createDefaultDefinition = () => ({
+  modelToolName: "",
+  description: "",
+  dynamicParameters: [],
+  staticParameters: [],
+  http: {
+    baseUrlPattern: "",
+    httpMethod: "GET",
+  },
+  timeout: "20s",
+  precomputable: false,
+});
 
 export default function ToolDialog({ open, mode, tool, onClose, onSave }: {
   open: boolean;
@@ -26,19 +35,34 @@ export default function ToolDialog({ open, mode, tool, onClose, onSave }: {
   onSave: (tool: Tool) => void;
 }) {
   const [name, setName] = useState(tool?.name || "");
-  const [definition, setDefinition] = useState<any>(tool?.definition || {
-    modelToolName: "",
-    description: "",
-    dynamicParameters: [],
-    staticParameters: [],
-    http: {},
-    timeout: "20s",
-    precomputable: false,
-  });
+  const [definition, setDefinition] = useState<any>(tool?.definition || createDefaultDefinition());
   const [isDirty, setIsDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [schemaDrafts, setSchemaDrafts] = useState<Record<string, string>>({});
+  const [valueDrafts, setValueDrafts] = useState<Record<string, string>>({});
+  const [parameterErrors, setParameterErrors] = useState<Record<string, string>>({});
 
   const isView = mode === "view";
+
+  useEffect(() => {
+    if (!open) return;
+    setName(tool?.name || "");
+    setDefinition(tool?.definition || createDefaultDefinition());
+    setSchemaDrafts({});
+    setValueDrafts({});
+    setParameterErrors({});
+    setIsDirty(false);
+    setError(null);
+  }, [open, tool, mode]);
+
+  const setDefinitionWithDirty = (updater: ((prev: any) => any) | any) => {
+    setDefinition((prev: any) => {
+      const next = typeof updater === "function" ? updater(prev) : { ...prev, ...updater };
+      return next;
+    });
+    setIsDirty(true);
+    setError(null);
+  };
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setName(e.target.value);
@@ -47,6 +71,11 @@ export default function ToolDialog({ open, mode, tool, onClose, onSave }: {
 
   const handleSave = () => {
     try {
+      const validationMessage = validateDefinition();
+      if (validationMessage) {
+        setError(validationMessage);
+        return;
+      }
       // Validate JSON by stringifying
       JSON.stringify(definition);
       onSave({ ...tool, name, definition });
@@ -58,18 +87,154 @@ export default function ToolDialog({ open, mode, tool, onClose, onSave }: {
 
   const handleDiscard = () => {
     setName(tool?.name || "");
-    setDefinition(tool?.definition || {
-      modelToolName: "",
-      description: "",
-      dynamicParameters: [],
-      staticParameters: [],
-      http: {},
-      timeout: "20s",
-      precomputable: false,
-    });
+    setDefinition(tool?.definition || createDefaultDefinition());
+    setSchemaDrafts({});
+    setValueDrafts({});
+    setParameterErrors({});
     setIsDirty(false);
     setError(null);
     onClose();
+  };
+
+  const handleSimpleFieldChange = (field: string, value: any) => {
+    setDefinitionWithDirty((prev: any) => ({ ...prev, [field]: value }));
+  };
+
+  const handleHttpChange = (field: string, value: any) => {
+    setDefinitionWithDirty((prev: any) => ({
+      ...prev,
+      http: {
+        ...(prev.http || { baseUrlPattern: "", httpMethod: "GET" }),
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleDynamicParameterChange = (index: number, field: string, value: any) => {
+    setDefinitionWithDirty((prev: any) => {
+      const params = [...(prev.dynamicParameters || [])];
+      params[index] = { ...params[index], [field]: value };
+      return { ...prev, dynamicParameters: params };
+    });
+  };
+
+  const handleStaticParameterChange = (index: number, field: string, value: any) => {
+    setDefinitionWithDirty((prev: any) => {
+      const params = [...(prev.staticParameters || [])];
+      params[index] = { ...params[index], [field]: value };
+      return { ...prev, staticParameters: params };
+    });
+  };
+
+  const addDynamicParameter = () => {
+    if (isView) return;
+    setDefinitionWithDirty((prev: any) => ({
+      ...prev,
+      dynamicParameters: [
+        ...(prev.dynamicParameters || []),
+        { name: "", location: ParameterLocation.BODY, required: false, schema: {} },
+      ],
+    }));
+  };
+
+  const addStaticParameter = () => {
+    if (isView) return;
+    setDefinitionWithDirty((prev: any) => ({
+      ...prev,
+      staticParameters: [
+        ...(prev.staticParameters || []),
+        { name: "", location: ParameterLocation.BODY, value: "" },
+      ],
+    }));
+  };
+
+  const removeParameter = (type: "dynamic" | "static", index: number) => {
+    if (isView) return;
+    setDefinitionWithDirty((prev: any) => {
+      const key = type === "dynamic" ? "dynamicParameters" : "staticParameters";
+      const params = [...(prev[key] || [])];
+      params.splice(index, 1);
+      return { ...prev, [key]: params };
+    });
+  };
+
+  const handleSchemaDraftChange = (key: string, value: string) => {
+    setSchemaDrafts((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleDynamicSchemaBlur = (index: number) => {
+    const key = `dynamic-${index}-schema`;
+    const raw = schemaDrafts[key];
+    if (raw === undefined) return;
+    try {
+      const parsed = raw ? JSON.parse(raw) : {};
+      handleDynamicParameterChange(index, "schema", parsed);
+      setSchemaDrafts((prev) => {
+        const copy = { ...prev };
+        delete copy[key];
+        return copy;
+      });
+      setParameterErrors((prev) => {
+        const copy = { ...prev };
+        delete copy[key];
+        return copy;
+      });
+    } catch (err) {
+      setParameterErrors((prev) => ({ ...prev, [key]: "Invalid JSON" }));
+    }
+  };
+
+  const handleStaticValueBlur = (index: number) => {
+    const key = `static-${index}-value`;
+    const raw = valueDrafts[key];
+    if (raw === undefined) return;
+    let parsed: any = raw;
+    try {
+      parsed = raw ? JSON.parse(raw) : "";
+    } catch (err) {
+      parsed = raw;
+    }
+    handleStaticParameterChange(index, "value", parsed);
+    setValueDrafts((prev) => {
+      const copy = { ...prev };
+      delete copy[key];
+      return copy;
+    });
+  };
+
+  const validateDefinition = (): string | null => {
+    if (!name.trim()) return "Tool name is required.";
+    if (!TOOL_NAME_PATTERN.test(name.trim())) {
+      return "Name must be 1-64 characters and only contain letters, numbers, underscores, or dashes.";
+    }
+    if (!definition?.modelToolName?.trim()) return "Model tool name is required.";
+    if (!definition?.description?.trim()) return "Description is required.";
+    if (!definition?.timeout?.trim()) return "Timeout is required.";
+    const http = definition?.http || {};
+    if (!http.baseUrlPattern?.trim()) return "HTTP base URL pattern is required.";
+    if (!http.httpMethod?.trim()) return "HTTP method is required.";
+
+    const dynamic = definition?.dynamicParameters || [];
+    for (let i = 0; i < dynamic.length; i++) {
+      const param = dynamic[i];
+      if (!param?.name?.trim()) return `Dynamic parameter ${i + 1} is missing a name.`;
+      if (!param?.location) return `Dynamic parameter ${i + 1} must have a location.`;
+      if (!param?.schema || Object.keys(param.schema).length === 0) {
+        return `Dynamic parameter ${i + 1} must include a schema.`;
+      }
+    }
+
+    const staticParams = definition?.staticParameters || [];
+    for (let i = 0; i < staticParams.length; i++) {
+      const param = staticParams[i];
+      if (!param?.name?.trim()) return `Static parameter ${i + 1} is missing a name.`;
+      if (!param?.location) return `Static parameter ${i + 1} must have a location.`;
+      if (param?.value === undefined || param?.value === "") {
+        return `Static parameter ${i + 1} must include a value.`;
+      }
+    }
+
+    return null;
   };
 
   if (!open) return null;
@@ -85,49 +250,27 @@ export default function ToolDialog({ open, mode, tool, onClose, onSave }: {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div>
-              <label className="font-medium flex items-center gap-2">
-                Name
-                <span className="text-xs text-muted-foreground" title={fieldExplanations.name}>?</span>
-              </label>
-              <input
-                className="w-full border rounded px-3 py-2 mt-1"
-                value={name}
-                onChange={handleNameChange}
-                disabled={isView}
-                placeholder="Tool Name"
-              />
-            </div>
-            <div>
-              <label className="font-medium flex items-center gap-2">
-                Tool Definition (JSON)
-                <span className="text-xs text-muted-foreground" title={fieldExplanations.definition}>?</span>
-              </label>
-              <div className="mt-2">
-                <JsonView
-                  src={definition}
-                  editable={!isView}
-                  onEdit={(params: { newValue: any; src: any }) => {
-                    setDefinition(params.src);
-                    setIsDirty(true);
-                  }}
-                  onAdd={(params: { src: any }) => {
-                    setDefinition(params.src);
-                    setIsDirty(true);
-                  }}
-                  onDelete={(params: { src: any }) => {
-                    setDefinition(params.src);
-                    setIsDirty(true);
-                  }}
-                  enableClipboard={true}
-                  collapsed={2}
-                  style={{ fontSize: 12 }}
-                />
-              </div>
-              {error && <div className="text-red-500 text-xs mt-1">{error}</div>}
-            </div>
-          </div>
+        <ToolForm
+            name={name}
+            definition={definition}
+            isView={isView}
+            handleNameChange={handleNameChange}
+            handleSimpleFieldChange={handleSimpleFieldChange}
+            handleHttpChange={handleHttpChange}
+            handleDynamicParameterChange={handleDynamicParameterChange}
+            handleStaticParameterChange={handleStaticParameterChange}
+            addDynamicParameter={addDynamicParameter}
+            addStaticParameter={addStaticParameter}
+            removeParameter={removeParameter}
+            schemaDrafts={schemaDrafts}
+            handleSchemaDraftChange={handleSchemaDraftChange}
+            handleDynamicSchemaBlur={handleDynamicSchemaBlur}
+            parameterErrors={parameterErrors}
+            valueDrafts={valueDrafts}
+            setValueDrafts={setValueDrafts}
+            handleStaticValueBlur={handleStaticValueBlur}
+          />
+          {error && <div className="text-red-500 text-sm">{error}</div>}
         </CardContent>
         <CardFooter className="flex justify-end gap-2">
           <Button variant="outline" onClick={handleDiscard}>Discard</Button>
@@ -138,4 +281,4 @@ export default function ToolDialog({ open, mode, tool, onClose, onSave }: {
       </Card>
     </div>
   );
-} 
+}

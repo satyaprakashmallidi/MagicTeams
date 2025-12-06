@@ -92,20 +92,10 @@ export default function ToolsPage() {
         onDelete={handleDelete}
         onCreate={handleCreate}
       />
-      <div className="flex-1 p-6 bg-muted/50 overflow-y-auto custom-scrollbar">
+      <div className="flex-1 p-4 bg-muted/50 overflow-y-auto custom-scrollbar">
         <ToolDetails
           tool={selectedTool}
-          onSave={async (tool) => {
-            if (!user?.id || !tool.toolId) return;
-            try {
-              await updateTool(tool.toolId, user.id, { name: tool.name, definition: tool.definition });
-              toast({ title: "Tool updated!" });
-              fetchTools();
-              setSelectedTool(tool);
-            } catch (e) {
-              toast({ title: "Error", description: String(e), variant: "destructive" });
-            }
-          }}
+          onEdit={handleEdit}
         />
       </div>
       <ToolDialog
