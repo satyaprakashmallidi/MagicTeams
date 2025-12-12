@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icons';
@@ -30,6 +31,7 @@ import { useBots } from '@/hooks/use-bots';
 
 
 export function BotList() {
+  const router = useRouter();
   const { toast } = useToast();
   const [duplicatingBotId, setDuplicatingBotId] = useState<string | null>(null);
 
@@ -37,6 +39,8 @@ export function BotList() {
 
   const handleBotSelect = (botId: string) => {
     setSelectedBotId(botId);
+    // Update URL with botId query parameter
+    router.push(`/dashboard/aiassistant?botId=${botId}`, { scroll: false });
   };
 
   const handleDeleteBot = async (botId: string) => {
@@ -135,8 +139,8 @@ export function BotList() {
             <div
               key={bot.id}
               className={`group relative p-2 rounded-xl border transition-all duration-200 ${isSelected
-                  ? 'bg-primary/10 border-primary/20 shadow-sm'
-                  : 'bg-card border-border hover:border-border/80 hover:shadow-sm'
+                ? 'bg-primary/10 border-primary/20 shadow-sm'
+                : 'bg-card border-border hover:border-border/80 hover:shadow-sm'
                 } ${bot.is_enabled === false ? 'opacity-40' : ''}`}
             >
               <div className="flex items-start justify-between gap-2">

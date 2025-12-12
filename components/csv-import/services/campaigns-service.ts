@@ -121,12 +121,17 @@ class CampaignsService {
     this.baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL_WORKER || 'http://localhost:8787';
   }
 
+  private getHeaders(): HeadersInit {
+    return {
+      'Content-Type': 'application/json',
+      'ngrok-skip-browser-warning': 'true', // Skip ngrok interstitial page
+    };
+  }
+
   async createCampaign(payload: CreateCampaignPayload): Promise<{ campaign_id: string; status: string; message: string }> {
     const response = await fetch(`${this.baseUrl}/api/campaigns`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: this.getHeaders(),
       body: JSON.stringify(payload),
     });
 
@@ -141,9 +146,7 @@ class CampaignsService {
   async getCampaigns(userId: string): Promise<{ campaigns: Campaign[] }> {
     const response = await fetch(`${this.baseUrl}/api/campaigns?user_id=${userId}`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: this.getHeaders(),
     });
 
     if (!response.ok) {
@@ -157,9 +160,7 @@ class CampaignsService {
   async getCampaign(campaignId: string): Promise<{ campaign: Campaign; contacts: CampaignContact[] }> {
     const response = await fetch(`${this.baseUrl}/api/campaigns/${campaignId}`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: this.getHeaders(),
     });
 
     if (!response.ok) {
@@ -173,9 +174,7 @@ class CampaignsService {
   async getCampaignStats(campaignId: string): Promise<{ stats: CampaignStats }> {
     const response = await fetch(`${this.baseUrl}/api/campaigns/${campaignId}/stats`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: this.getHeaders(),
     });
 
     if (!response.ok) {
@@ -189,9 +188,7 @@ class CampaignsService {
   async startCampaign(campaignId: string): Promise<{ status: string; message: string }> {
     const response = await fetch(`${this.baseUrl}/api/campaigns/${campaignId}/start`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: this.getHeaders(),
     });
 
     if (!response.ok) {
@@ -205,9 +202,7 @@ class CampaignsService {
   async stopCampaign(campaignId: string): Promise<{ status: string; message: string }> {
     const response = await fetch(`${this.baseUrl}/api/campaigns/${campaignId}/stop`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: this.getHeaders(),
     });
 
     if (!response.ok) {
@@ -219,15 +214,13 @@ class CampaignsService {
   }
 
   async updateContact(
-    campaignId: string, 
-    contactId: string, 
+    campaignId: string,
+    contactId: string,
     updates: Partial<CampaignContact>
   ): Promise<{ status: string; message: string }> {
     const response = await fetch(`${this.baseUrl}/api/campaigns/${campaignId}/contacts/${contactId}`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: this.getHeaders(),
       body: JSON.stringify(updates),
     });
 
@@ -242,9 +235,7 @@ class CampaignsService {
   async deleteCampaign(campaignId: string): Promise<{ status: string; message: string }> {
     const response = await fetch(`${this.baseUrl}/api/campaigns/${campaignId}`, {
       method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: this.getHeaders(),
     });
 
     if (!response.ok) {
@@ -258,9 +249,7 @@ class CampaignsService {
   async updateCampaignSchedule(campaignId: string, scheduling: CampaignScheduling): Promise<{ status: string; message: string }> {
     const response = await fetch(`${this.baseUrl}/api/campaigns/${campaignId}/schedule`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: this.getHeaders(),
       body: JSON.stringify(scheduling),
     });
 
@@ -273,15 +262,13 @@ class CampaignsService {
   }
 
   async getScheduledCampaigns(userId?: string): Promise<{ campaigns: Campaign[] }> {
-    const url = userId 
+    const url = userId
       ? `${this.baseUrl}/api/campaigns/scheduled?user_id=${userId}`
       : `${this.baseUrl}/api/campaigns/scheduled`;
-      
+
     const response = await fetch(url, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: this.getHeaders(),
     });
 
     if (!response.ok) {
