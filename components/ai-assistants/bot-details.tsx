@@ -52,6 +52,8 @@ import { logBotOperation, logAgentSync } from "@/lib/utils/api-logger";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useAppointmentTools } from '@/hooks/use-appointments';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 
 
@@ -101,6 +103,13 @@ export function BotDetails() {
     mode: 'onChange',
   });
   const { errors } = formState;
+
+  // Collapsible states for Call Configuration tab
+  const [phoneNumberOpen, setPhoneNumberOpen] = useState(true);
+  const [modelOpen, setModelOpen] = useState(false);
+  const [appointmentToolsOpen, setAppointmentToolsOpen] = useState(false);
+  const [webhooksOpen, setWebhooksOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
 
   const handleSync = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -169,10 +178,10 @@ export function BotDetails() {
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
   const [originalSelectedTools, setOriginalSelectedTools] = useState<string[]>([]);
   const [toolsLoading, setToolsLoading] = useState(false);
-    const [isToolsDropdownOpen, setIsToolsDropdownOpen] = useState(false);
-  
-    // Close dropdown when clicking outside
-    useEffect(() => {
+  const [isToolsDropdownOpen, setIsToolsDropdownOpen] = useState(false);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (isToolsDropdownOpen && !(event.target as Element).closest('.tools-dropdown')) {
         setIsToolsDropdownOpen(false);
@@ -278,7 +287,7 @@ export function BotDetails() {
     setValue("twilio_phone_number", bot.twilio_phone_number || '');
     setValue("model", 'ultravox-v0.7'); // Force model to the currently allowed valid enum value
     setValue("first_speaker", bot.first_speaker || 'FIRST_SPEAKER_AGENT');
-    
+
     // Set appointment and call transfer settings
     setValue("is_appointment_booking_allowed", bot.is_appointment_booking_allowed || false);
     setValue("appointment_tool_id", bot.appointment_tool_id || undefined);
@@ -478,18 +487,18 @@ export function BotDetails() {
 
   const buildCallTools = () => {
     const isUuid = (str: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
-    
+
     // Map selected tool IDs to tool objects
     let tools = selectedTools.map(toolIdentifier => {
       // If the identifier is for the selected knowledge base, transform it into a queryCorpus tool.
       if (selectedKnowledgeBase && toolIdentifier === selectedKnowledgeBase) {
         return {
-            toolName: 'queryCorpus',
-            parameterOverrides: {
-              corpus_id: selectedKnowledgeBase,
-              max_results: 20
-            }
-          };
+          toolName: 'queryCorpus',
+          parameterOverrides: {
+            corpus_id: selectedKnowledgeBase,
+            max_results: 20
+          }
+        };
       }
 
       // For all other identifiers, create the tool object with the correct key.
@@ -808,43 +817,65 @@ export function BotDetails() {
   );
 
   return (
-    <div className="flex h-full gap-6 pb-4">
-      {/* Left Panel - Bot Configuration */}
-      <div className="w-1/2 space-y-6">
-        <div className="bg-card p-6 rounded-lg shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Bot Configuration</h2>
-            <div className="flex items-center gap-2">
-              {botId && bots.find(b => b.id === botId) && (
-                <BotToggle bot={bots.find(b => b.id === botId)!} />
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsSettingsDialogOpen(true)}
-                className="flex items-center gap-2"
-              >
-                <Icon name="settings" className="h-4 w-4" />
-                Settings
-              </Button>
-            </div>
+    <div className="h-full">
+      <div className="bg-card rounded-lg shadow-sm">
+        <div className="flex items-center justify-between p-6 border-b">
+          <h2 className="text-lg font-semibold">Bot Configuration</h2>
+          <div className="flex items-center gap-2">
+            {botId && bots.find(b => b.id === botId) && (
+              <BotToggle bot={bots.find(b => b.id === botId)!} />
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsSettingsDialogOpen(true)}
+              className="flex items-center gap-2"
+            >
+              <Icon name="settings" className="h-4 w-4" />
+              Settings
+            </Button>
           </div>
-          {currentBot?.is_agent && (
-            <div className="text-sm text-muted-foreground mb-4">
-              Last Synced: {formatLastSynced(currentBot.last_synced_at)}
-            </div>
-          )}
-          <form
-            onSubmit={handleSubmit(onSubmit)}
-            className="space-y-4"
-            onKeyDown={(e) => {
-              // Only prevent Enter if it's not in a textarea
-              if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
-                e.preventDefault();
-              }
-            }}
-          >
-            <div className="grid grid-cols-2 gap-4">
+        </div>
+
+        {currentBot?.is_agent && (
+          <div className="text-sm text-muted-foreground px-6 pt-4">
+            Last Synced: {formatLastSynced(currentBot.last_synced_at)}
+          </div>
+        )}
+
+        <Tabs defaultValue="assistant" className="w-full">
+          <TabsList className="w-full grid grid-cols-3 bg-muted h-auto p-1">
+            <TabsTrigger
+              value="assistant"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              Assistant Details
+            </TabsTrigger>
+            <TabsTrigger
+              value="configuration"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              Call Configurations
+            </TabsTrigger>
+            <TabsTrigger
+              value="knowledge"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              Knowledge Base
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Assistant Details Tab */}
+          <TabsContent value="assistant" className="p-6 space-y-6">
+            <form
+              onSubmit={handleSubmit(onSubmit)}
+              className="space-y-4"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
+                  e.preventDefault();
+                }
+              }}
+            >
               <div>
                 <Label htmlFor="name">Bot Name</Label>
                 <Input
@@ -857,232 +888,20 @@ export function BotDetails() {
                 )}
               </div>
 
-              <div className="flex flex-col gap-2"> {/* Added flex-col to match the input's structure */}
-                <Label>Bot ID</Label> {/* Added Label for consistency */}
-                <div className="flex items-center justify-between text-sm text-muted-foreground bg-muted p-2 rounded-md h-10"> {/* Added h-10 for height consistency */}
+              <div className="flex flex-col gap-2">
+                <Label>Bot ID</Label>
+                <div className="flex items-center justify-between text-sm text-muted-foreground bg-muted p-2 rounded-md">
                   <div className="flex items-center gap-2">
                     <Icon name="id" className="h-4 w-4" />
-                    <span className="text-xs">{botId}</span> {/* Reduced font size */} {/* Removed "Bot ID:" as Label is now above */}
+                    <span className="text-xs">{botId}</span>
                   </div>
+                  <CopyButton value={botId || ""} />
                 </div>
               </div>
-            </div>
-
-
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="phone_number">Phone Number (Optional)</Label>
-                <Input
-                  id="phone_number"
-                  {...register("phone_number")}
-                  placeholder="+1234567890"
-                />
-                {errors.phone_number && (
-                  <p className="text-sm text-red-500">
-                    {errors.phone_number.message}
-                  </p>
-                )}
-              </div>
 
               <div>
-                <Label htmlFor="twilio_phone_number">Twilio Phone Number</Label>
-                {loadingTwilioNumbers ? (
-                  <div className="text-sm text-muted-foreground">
-                    Loading phone numbers...
-                  </div>
-                ) : twilioNumbers.length === 0 ? (
-                  <div className="text-sm text-red-500">
-                    Please add your Twilio integration first.
-                  </div>
-                ) : (
-                  <Select
-                    onValueChange={(value) => {
-                      setValue("twilio_phone_number", value);
-                    }}
-                    value={watch("twilio_phone_number") || ""}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a phone number" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {uniquePhoneNumbers.map((number) => (
-                        <SelectItem
-                          key={`${number.accountSid}-${number.phone_number}`}
-                          value={number.phone_number}
-                        >
-                          {number.friendly_name || number.phone_number}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="first_speaker">First Speaker</Label>
-                <Select
-                  onValueChange={(value) => setValue("first_speaker", value as "FIRST_SPEAKER_AGENT" | "FIRST_SPEAKER_USER")}
-                  value={watch("first_speaker")}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a first speaker" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="FIRST_SPEAKER_AGENT">Agent</SelectItem>
-                    <SelectItem value="FIRST_SPEAKER_USER">User</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="voice">Voice</Label>
-                <Select
-                  onValueChange={(value) => setValue("voice", value)}
-                  value={selectedVoice}
-                >
-                  <SelectTrigger disabled={voicesLoading}>
-                    <SelectValue placeholder={voicesLoading ? "Loading voices..." : "Select a voice"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {voices.map((voice) => (
-                      <SelectItem key={voice.voiceId} value={voice.voiceId}>
-                        {voice.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.voice && (
-                  <p className="text-sm text-red-500">{errors.voice.message}</p>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-4"> {/* Use space-y-4 for vertical rhythm within the form */}
-              <div className="flex items-start justify-between gap-4">
-                <div className="w-1/2 flex flex-col gap-2">
-                  <Label>Knowledge Base</Label>
-                  <Select
-                    value={selectedKnowledgeBase || 'none'}
-                    onValueChange={(value) => {
-                      const kbId = value === 'none' ? null : value;
-                      setSelectedKnowledgeBase(kbId);
-                      setValue("knowledge_base_id", kbId || undefined);
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a knowledge base" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {knowledgeBases?.map((kb) => (kb?.ultravox_details?.stats?.status === "CORPUS_STATUS_READY" &&
-                        <SelectItem key={kb.corpus_id} value={kb.corpus_id}>
-                          {kb.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-sm text-muted-foreground">
-                    {knowledgeBases?.length === 0
-                      ? "No knowledge bases available."
-                      : "Select a knowledge base for the bot."
-                    }
-                  </p>
-                </div>
-                <div className="w-1/2 flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
-                    <Label>Tools</Label>
-                  </div>
-
-                  <Popover open={isToolsDropdownOpen} onOpenChange={setIsToolsDropdownOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={isToolsDropdownOpen}
-                        className="w-full justify-between h-10"
-                        onClick={(e) => { e.preventDefault(); setIsToolsDropdownOpen(!isToolsDropdownOpen); }}
-                      >
-                        <div className="flex items-center gap-2">
-                          <Icon name="wrench" className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm font-medium">
-                            {selectedTools.length > 0 ? `${selectedTools.length} tool(s) selected` : 'Select tools'}
-                          </span>
-                        </div>
-                        <Icon name="chevrons-up-down" className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                        <div className="p-2">
-                          {toolsLoading ? (
-                            <div className="p-2 text-sm text-muted-foreground text-center">Loading...</div>
-                          ) : availableTools.length === 0 ? (
-                            <div className="p-2 text-sm text-muted-foreground text-center">
-                              No tools available.
-                            </div>
-                          ) : (
-                            <div className="mt-1 space-y-1 max-h-48 overflow-y-auto">
-                              {availableTools.map((tool) => (
-                                <div
-                                  key={tool.toolId}
-                                  className="flex items-center px-2 py-1.5 hover:bg-accent rounded-md cursor-pointer"
-                                  onClick={() => {
-                                    const newSelectedTools = selectedTools.includes(tool.toolId)
-                                      ? selectedTools.filter(id => id !== tool.toolId)
-                                      : [...selectedTools, tool.toolId];
-                                    setSelectedTools(newSelectedTools);
-                                  }}
-                                >
-                                  <Checkbox
-                                    checked={selectedTools.includes(tool.toolId)}
-                                    readOnly
-                                    className="mr-2"
-                                  />
-                                  <span className="text-sm text-foreground">
-                                    {tool.name}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                    </PopoverContent>
-                  </Popover>
-
-                  <p className="text-sm text-muted-foreground">
-                    Select tools this bot can use.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="temperature">Temperature</Label>
-                <span className="text-sm text-muted-foreground">
-                  {watch("temperature") / 10}
-                </span>
-              </div>
-              <Slider
-                value={[watch("temperature")]}
-                max={10}
-                min={0}
-                step={1}
-                onValueChange={(value) => setValue("temperature", value[0])}
-                className="w-full h-4"
-              />
-              {errors.temperature && (
-                <p className="text-sm text-red-500">
-                  {errors.temperature.message}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <Label htmlFor="system_prompt">System Prompt</Label>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between mb-2">
+                  <Label htmlFor="system_prompt">System Prompt</Label>
                   <Button
                     variant="outline"
                     size="sm"
@@ -1090,263 +909,552 @@ export function BotDetails() {
                     onClick={(e) => { e.preventDefault(); setIsPromptDialogOpen(true) }}
                   >
                     <Icon name="expand" className="h-4 w-4" />
-                    <span>Expand</span>
+                    Expand
+                  </Button>
+                </div>
+                <Textarea
+                  id="system_prompt"
+                  {...register("system_prompt")}
+                  placeholder="Enter the system prompt..."
+                  className="h-40 resize-none"
+                />
+                {errors.system_prompt && (
+                  <p className="text-sm text-red-500">
+                    {errors.system_prompt.message}
+                  </p>
+                )}
+
+                <Dialog open={isPromptDialogOpen} onOpenChange={setIsPromptDialogOpen}>
+                  <DialogContent className="max-w-[1200px] h-[80vh]">
+                    <DialogHeader>
+                      <DialogTitle>System Prompt</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex flex-col">
+                      <Textarea
+                        value={watch("system_prompt")}
+                        onChange={(e) => setValue("system_prompt", e.target.value)}
+                        className="min-h-[70vh] text-base resize-none"
+                        placeholder="Enter the system prompt..."
+                      />
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+
+              {/* Call Control Buttons */}
+              <div className="pt-4 border-t">
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    className="flex-1 items-center justify-center gap-2"
+                    onClick={handleCall}
+                    disabled={isLoading || !twilioAllowed || isCallActive || !isBotEnabled}
+                  >
+                    <Icon name="phone-call" className="h-4 w-4" />
+                    Start Call
+                    {!twilioAllowed && (
+                      <span className="text-xs text-red-500">
+                        (Twilio not configured)
+                      </span>
+                    )}
+                    {!isBotEnabled && (
+                      <span className="text-xs text-red-500">
+                        (Bot inactive)
+                      </span>
+                    )}
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant={isMuted ? "destructive" : "outline"}
+                    className="flex-1 items-center justify-center gap-2"
+                    disabled={isLoading || !isBotEnabled}
+                    onClick={handleToggleMute}
+                  >
+                    <Icon
+                      name={isMuted ? "volume-mute" : "volume-up"}
+                      className="h-4 w-4"
+                    />
+                    {isMuted ? "Unmute" : "Mute"}
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant={isCallActive ? "destructive" : "default"}
+                    className="flex-1 items-center justify-center gap-2"
+                    onClick={isCallActive ? terminateCall : initiateCall}
+                    disabled={isLoading || (!isCallActive && !isBotEnabled)}
+                  >
+                    <Icon name="phone-call" className="h-4 w-4" />
+                    {isCallActive ? "End Call" : "Demo Call"}
                   </Button>
                 </div>
               </div>
-              <Textarea
-                id="system_prompt"
-                {...register("system_prompt")}
-                placeholder="Enter the system prompt..."
-                className="h-40 resize-none"
-              />
-              {errors.system_prompt && (
-                <p className="text-sm text-red-500">
-                  {errors.system_prompt.message}
-                </p>
-              )}
 
-              <Dialog open={isPromptDialogOpen} onOpenChange={setIsPromptDialogOpen}>
-                <DialogContent className="max-w-[1200px] h-[80vh]">
-                  <DialogHeader>
-                    <DialogTitle>System Prompt</DialogTitle>
-                  </DialogHeader>
-                  <div className="flex flex-col">
-                    <Textarea
-                      value={watch("system_prompt")}
-                      onChange={(e) => setValue("system_prompt", e.target.value)}
-                      className="min-h-[70vh] text-base resize-none"
-                      placeholder="Enter the system prompt..."
-                    />
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button type="submit" disabled={loading || isSyncing}>
-                {loading ? "Saving..." : "Save Changes"}
-              </Button>
-              {currentBot && (!currentBot.is_agent || !currentBot.last_synced_at) && (
-                <Button variant="outline" onClick={handleSync} disabled={isSyncing}>
-                  {isSyncing ? "Syncing..." : "Sync Agent"}
+              <div className="flex items-center gap-2">
+                <Button type="submit" disabled={loading || isSyncing}>
+                  {loading ? "Saving..." : "Save"}
                 </Button>
-              )}
-            </div>
-          </form>
-        </div>
+                {currentBot && (!currentBot.is_agent || !currentBot.last_synced_at) && (
+                  <Button variant="outline" onClick={handleSync} disabled={isSyncing}>
+                    {isSyncing ? "Syncing..." : "Sync Agent"}
+                  </Button>
+                )}
+              </div>
+            </form>
 
-      </div>
-
-      {/* Right Panel - Actions & Transcripts */}
-      <div className="w-1/2 space-y-6">
-
-
-
-        {/* Appointment & Transfer Settings */}
-        <div className="bg-card p-6 rounded-lg shadow-sm grid grid-cols-2 gap-6">
-            <div className="space-y-4"> {/* Left Column: Appointment Booking */}
-                <div className="flex items-center justify-between">
-                    <div>
-                        <Label>Appointment Booking</Label>
-                        <p className="text-sm text-gray-500">
-                        Allow the bot to book appointments.
-                        </p>
-                    </div>
-                    <Controller
-                        name="is_appointment_booking_allowed"
-                        control={control}
-                        render={({ field }) => (
-                            <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            />
-                        )}
-                    />
+            {/* Transcript View (shown when call is active) */}
+            {isCallActive && (
+              <div className="space-y-4 pt-4 border-t">
+                <VoiceBar
+                  agentStatus={agentStatus}
+                  transcripts={callTranscript}
+                />
+                <div className="bg-card p-4 rounded-lg shadow-sm">
+                  <TranscriptView botId={botId || ""} initialTranscripts={callTranscript} />
                 </div>
+              </div>
+            )}
+          </TabsContent>
 
-                {isAppointmentBookingAllowed && (
-                <div className="space-y-4 pt-4">
-                    <div>
-                    <Label>Select Appointment Tool</Label>
-                    <Controller
-                        name="appointment_tool_id"
-                        control={control}
-                        render={({ field }) => (
+          {/* Call Configuration Tab */}
+          <TabsContent value="configuration" className="p-6 space-y-4">
+            <form
+              onSubmit={handleSubmit(onSubmit)}
+              className="space-y-4"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
+                  e.preventDefault();
+                }
+              }}
+            >
+              {/* Phone Number Section */}
+              <Collapsible open={phoneNumberOpen} onOpenChange={setPhoneNumberOpen}>
+                <div className="border rounded-lg">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full p-4 hover:bg-muted/50 transition-colors">
+                    <span className="font-medium">Phone Number</span>
+                    <Icon
+                      name={phoneNumberOpen ? "chevron-up" : "chevron-down"}
+                      className="h-4 w-4"
+                    />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="p-4 pt-0 space-y-4">
+                      <div>
+                        <Label htmlFor="phone_number">Phone Number (Optional)</Label>
+                        <Input
+                          id="phone_number"
+                          {...register("phone_number")}
+                          placeholder="+1234567890"
+                        />
+                        {errors.phone_number && (
+                          <p className="text-sm text-red-500">
+                            {errors.phone_number.message}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="twilio_phone_number">Twilio Phone Number</Label>
+                          {loadingTwilioNumbers ? (
+                            <div className="text-sm text-muted-foreground">
+                              Loading phone numbers...
+                            </div>
+                          ) : twilioNumbers.length === 0 ? (
+                            <div className="text-sm text-red-500">
+                              Please add your Twilio integration first.
+                            </div>
+                          ) : (
                             <Select
+                              onValueChange={(value) => {
+                                setValue("twilio_phone_number", value);
+                              }}
+                              value={watch("twilio_phone_number") || ""}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a phone number" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {uniquePhoneNumbers.map((number) => (
+                                  <SelectItem
+                                    key={`${number.accountSid}-${number.phone_number}`}
+                                    value={number.phone_number}
+                                  >
+                                    {number.friendly_name || number.phone_number}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
+
+                        <div>
+                          <Label htmlFor="first_speaker">First Speaker</Label>
+                          <Select
+                            onValueChange={(value) => setValue("first_speaker", value as "FIRST_SPEAKER_AGENT" | "FIRST_SPEAKER_USER")}
+                            value={watch("first_speaker")}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select first speaker" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="FIRST_SPEAKER_AGENT">Agent</SelectItem>
+                              <SelectItem value="FIRST_SPEAKER_USER">User</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>Call Transfer</Label>
+                            <p className="text-sm text-muted-foreground">
+                              Enable transferring calls to human agents
+                            </p>
+                          </div>
+                          <Controller
+                            name="is_call_transfer_allowed"
+                            control={control}
+                            render={({ field }) => (
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            )}
+                          />
+                        </div>
+
+                        {isCallTransferAllowed && (
+                          <div>
+                            <Label htmlFor="call_transfer_number">TRANSFER PHONE NUMBER</Label>
+                            <Controller
+                              name="call_transfer_number"
+                              control={control}
+                              render={({ field }) => (
+                                <Input
+                                  {...field}
+                                  id="call_transfer_number"
+                                  placeholder="+1234567890"
+                                  className="mt-1"
+                                />
+                              )}
+                            />
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Enter number where calls should be transferred (include country code)
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </div>
+              </Collapsible>
+
+              {/* Model Section */}
+              <Collapsible open={modelOpen} onOpenChange={setModelOpen}>
+                <div className="border rounded-lg">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full p-4 hover:bg-muted/50 transition-colors">
+                    <span className="font-medium">Model</span>
+                    <Icon
+                      name={modelOpen ? "chevron-up" : "chevron-down"}
+                      className="h-4 w-4"
+                    />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="p-4 pt-0 space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="voice">Voice</Label>
+                          <Select
+                            onValueChange={(value) => setValue("voice", value)}
+                            value={selectedVoice}
+                          >
+                            <SelectTrigger disabled={voicesLoading}>
+                              <SelectValue placeholder={voicesLoading ? "Loading voices..." : "Select a voice"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {voices.map((voice) => (
+                                <SelectItem key={voice.voiceId} value={voice.voiceId}>
+                                  {voice.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {errors.voice && (
+                            <p className="text-sm text-red-500">{errors.voice.message}</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <Label htmlFor="model">Model</Label>
+                          <Select
+                            value="ultravox-v0.7"
+                            disabled
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="ultravox-v0.7">Ultravox v0.7</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="temperature">Temperature</Label>
+                          <span className="text-sm text-muted-foreground">
+                            {watch("temperature") / 10}
+                          </span>
+                        </div>
+                        <Slider
+                          value={[watch("temperature")]}
+                          max={10}
+                          min={0}
+                          step={1}
+                          onValueChange={(value) => setValue("temperature", value[0])}
+                          className="w-full"
+                        />
+                        {errors.temperature && (
+                          <p className="text-sm text-red-500">
+                            {errors.temperature.message}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </div>
+              </Collapsible>
+
+              {/* Appointment Tools Section */}
+              <Collapsible open={appointmentToolsOpen} onOpenChange={setAppointmentToolsOpen}>
+                <div className="border rounded-lg">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full p-4 hover:bg-muted/50 transition-colors">
+                    <span className="font-medium">Appointment Tools</span>
+                    <Icon
+                      name={appointmentToolsOpen ? "chevron-up" : "chevron-down"}
+                      className="h-4 w-4"
+                    />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="p-4 pt-0 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label>Appointment Settings</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Allow the bot to book appointments
+                          </p>
+                        </div>
+                        <Controller
+                          name="is_appointment_booking_allowed"
+                          control={control}
+                          render={({ field }) => (
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          )}
+                        />
+                      </div>
+
+                      {isAppointmentBookingAllowed && (
+                        <div>
+                          <Label>SELECT APPOINTMENT TOOL</Label>
+                          <Controller
+                            name="appointment_tool_id"
+                            control={control}
+                            render={({ field }) => (
+                              <Select
                                 value={field.value}
                                 onValueChange={field.onChange}
                                 disabled={loading}
-                            >
+                              >
                                 <SelectTrigger>
-                                <SelectValue placeholder="Choose a tool"  />
+                                  <SelectValue placeholder="Choose a tool" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                {appointmentTools.length === 0 ? (
-                                    <div className="text-sm p-2 max-w-sm text-center">
-                                    No tools available.
+                                  {appointmentTools.length === 0 ? (
+                                    <div className="text-sm p-2 text-center">
+                                      No tools available.
                                     </div>
-                                ) : 
-                                (
+                                  ) : (
                                     appointmentTools.map((tool) => (
-                                    <SelectItem key={tool.id} value={tool.id}>
+                                      <SelectItem key={tool.id} value={tool.id}>
                                         {tool.name}
-                                    </SelectItem>
+                                      </SelectItem>
                                     ))
-                                )}
+                                  )}
                                 </SelectContent>
-                            </Select>
-                        )}
-                    />
+                              </Select>
+                            )}
+                          />
+                          <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
+                            <Icon name="calendar" className="h-4 w-4" />
+                            <span>No calendar connected</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
+                  </CollapsibleContent>
                 </div>
-                )}
-            </div>
-            
-            <div className='space-y-4'> {/* Right Column: Call Transfer */}
-                <div className="flex items-center justify-between">
-                    <div>
-                    <Label>Call Transfer</Label>
-                    <p className="text-sm text-gray-500">
-                        Enable call transfer.
-                    </p>
-                    </div>
-                    <Controller
-                        name="is_call_transfer_allowed"
-                        control={control}
-                        render={({ field }) => (
-                            <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            />
-                        )}
+              </Collapsible>
+
+              {/* Webhooks Section */}
+              <Collapsible open={webhooksOpen} onOpenChange={setWebhooksOpen}>
+                <div className="border rounded-lg">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full p-4 hover:bg-muted/50 transition-colors">
+                    <span className="font-medium">Webhooks</span>
+                    <Icon
+                      name={webhooksOpen ? "chevron-up" : "chevron-down"}
+                      className="h-4 w-4"
                     />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="p-4 pt-0">
+                      <p className="text-sm text-muted-foreground">
+                        Webhook configuration coming soon...
+                      </p>
+                    </div>
+                  </CollapsibleContent>
                 </div>
-                
-                {isCallTransferAllowed && (
-                    <div className='pt-4'>
-                    <Label htmlFor="call_transfer_number">Transfer Phone Number</Label>
-                     <Controller
-                        name="call_transfer_number"
-                        control={control}
-                        render={({ field }) => (
-                            <Input
-                                {...field}
-                                id="call_transfer_number"
-                                placeholder="+1234567890"
-                                className="mt-1"
-                            />
-                        )}
+              </Collapsible>
+
+              {/* Tools Section */}
+              <Collapsible open={toolsOpen} onOpenChange={setToolsOpen}>
+                <div className="border rounded-lg">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full p-4 hover:bg-muted/50 transition-colors">
+                    <span className="font-medium">Tools</span>
+                    <Icon
+                      name={toolsOpen ? "chevron-up" : "chevron-down"}
+                      className="h-4 w-4"
                     />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="p-4 pt-0 space-y-4">
+                      <Popover open={isToolsDropdownOpen} onOpenChange={setIsToolsDropdownOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={isToolsDropdownOpen}
+                            className="w-full justify-between h-10"
+                            onClick={(e) => { e.preventDefault(); setIsToolsDropdownOpen(!isToolsDropdownOpen); }}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Icon name="wrench" className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm font-medium">
+                                {selectedTools.length > 0 ? `${selectedTools.length} tool(s) selected` : 'Select tools'}
+                              </span>
+                            </div>
+                            <Icon name="chevrons-up-down" className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                          <div className="p-2">
+                            {toolsLoading ? (
+                              <div className="p-2 text-sm text-muted-foreground text-center">Loading...</div>
+                            ) : availableTools.length === 0 ? (
+                              <div className="p-2 text-sm text-muted-foreground text-center">
+                                No tools available.
+                              </div>
+                            ) : (
+                              <div className="mt-1 space-y-1 max-h-48 overflow-y-auto">
+                                {availableTools.map((tool) => (
+                                  <div
+                                    key={tool.toolId}
+                                    className="flex items-center px-2 py-1.5 hover:bg-accent rounded-md cursor-pointer"
+                                    onClick={() => {
+                                      const newSelectedTools = selectedTools.includes(tool.toolId)
+                                        ? selectedTools.filter(id => id !== tool.toolId)
+                                        : [...selectedTools, tool.toolId];
+                                      setSelectedTools(newSelectedTools);
+                                    }}
+                                  >
+                                    <Checkbox
+                                      checked={selectedTools.includes(tool.toolId)}
+                                      readOnly
+                                      className="mr-2"
+                                    />
+                                    <span className="text-sm text-foreground">
+                                      {tool.name}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                      <p className="text-sm text-muted-foreground">
+                        Select tools this bot can use.
+                      </p>
                     </div>
-                )}
+                  </CollapsibleContent>
+                </div>
+              </Collapsible>
+
+              <div className="flex items-center gap-2 pt-4">
+                <Button type="submit" disabled={loading || isSyncing}>
+                  {loading ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
+            </form>
+          </TabsContent>
+
+          {/* Knowledge Base Tab */}
+          <TabsContent value="knowledge" className="p-6">
+            <div className="text-center py-12 text-muted-foreground">
+              <p>Knowledge Base configuration coming soon...</p>
             </div>
-        </div>
-
-        {/* Actions Section */}
-        <div className="bg-card p-6 rounded-lg shadow-sm space-y-4 mt-auto">
-          <h2 className="text-lg font-semibold">Actions</h2>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              className="flex-1 items-center justify-center gap-2"
-              onClick={handleCall}
-              disabled={isLoading || !twilioAllowed || isCallActive || !isBotEnabled}
-            >
-              <Icon name="phone-call" className="h-4 w-4" />
-              Start Call
-              {!twilioAllowed && (
-                <span className="text-xs text-red-500">
-                  (Twilio not configured)
-                </span>
-              )}
-              {!isBotEnabled && (
-                <span className="text-xs text-red-500">
-                  (Bot inactive)
-                </span>
-              )}
-            </Button>
-
-            <Button
-              variant={isMuted ? "destructive" : "outline"}
-              className="flex-1 items-center justify-center gap-2"
-              disabled={isLoading || !isBotEnabled}
-              onClick={handleToggleMute}
-            >
-              <Icon
-                name={isMuted ? "volume-mute" : "volume-up"}
-                className="h-4 w-4"
-              />
-              {isMuted ? "Unmute" : "Mute"}
-            </Button>
-
-            <Button
-              variant={isCallActive ? "destructive" : "default"}
-              className="flex-1 items-center justify-center gap-2"
-              onClick={isCallActive ? terminateCall : initiateCall}
-              disabled={isLoading || (!isCallActive && !isBotEnabled)}
-            >
-              <Icon name="phone-call" className="h-4 w-4" />
-              {isCallActive ? "End Call" : "Demo Call"}
-            </Button>
-          </div>
-        </div>
-
-        {isCallActive && (
-          <>
-            <VoiceBar
-              agentStatus={agentStatus}
-              transcripts={callTranscript}
-            />
-            <div
-              className="bg-card p-4 rounded-lg shadow-sm flex-1"
-            >
-              <TranscriptView botId={botId || ""} initialTranscripts={callTranscript} />
-            </div>
-          </>
-        )}
-
-        <BotSettingsDialog
-          isOpen={isSettingsDialogOpen}
-          onOpenChange={setIsSettingsDialogOpen}
-          initialSettings={{
-            is_realtime_capture_enabled: bots.find((bot) => bot.id === botId)?.is_realtime_capture_enabled,
-            realtime_capture_fields: bots.find((bot) => bot.id === botId)?.realtime_capture_fields,
-            custom_questions: bots.find((bot) => bot.id === botId)?.custom_questions,
-          }}
-          onSave={async (settings) => {
-            if (!botId) return;
-
-            try {
-              const { error: updateError } = await supabase
-                .from("bots")
-                .update({
-                  is_realtime_capture_enabled: settings.is_realtime_capture_enabled,
-                  realtime_capture_fields: settings.realtime_capture_fields,
-                  custom_questions: settings.custom_questions,
-                })
-                .eq("id", botId);
-
-              if (updateError) {
-                throw updateError;
-              }
-
-              // Update local state
-              const currentBot = bots.find(b => b.id === botId);
-              if (currentBot) {
-                updateBot(botId, {
-                  ...currentBot,
-                  is_realtime_capture_enabled: settings.is_realtime_capture_enabled,
-                  realtime_capture_fields: settings.realtime_capture_fields,
-                  custom_questions: settings.custom_questions,
-                } as Bot);
-              }
-            } catch (error) {
-              console.error('Error saving settings:', error);
-              throw error;
-            }
-          }}
-        />
+          </TabsContent>
+        </Tabs>
       </div>
+
+      <BotSettingsDialog
+        isOpen={isSettingsDialogOpen}
+        onOpenChange={setIsSettingsDialogOpen}
+        initialSettings={{
+          is_realtime_capture_enabled: bots.find((bot) => bot.id === botId)?.is_realtime_capture_enabled,
+          realtime_capture_fields: bots.find((bot) => bot.id === botId)?.realtime_capture_fields,
+          custom_questions: bots.find((bot) => bot.id === botId)?.custom_questions,
+        }}
+        onSave={async (settings) => {
+          if (!botId) return;
+
+          try {
+            const { error: updateError } = await supabase
+              .from("bots")
+              .update({
+                is_realtime_capture_enabled: settings.is_realtime_capture_enabled,
+                realtime_capture_fields: settings.realtime_capture_fields,
+                custom_questions: settings.custom_questions,
+              })
+              .eq("id", botId);
+
+            if (updateError) {
+              throw updateError;
+            }
+
+            // Update local state
+            const currentBot = bots.find(b => b.id === botId);
+            if (currentBot) {
+              updateBot(botId, {
+                ...currentBot,
+                is_realtime_capture_enabled: settings.is_realtime_capture_enabled,
+                realtime_capture_fields: settings.realtime_capture_fields,
+                custom_questions: settings.custom_questions,
+              } as Bot);
+            }
+          } catch (error) {
+            console.error('Error saving settings:', error);
+            throw error;
+          }
+        }}
+      />
     </div>
   );
 }

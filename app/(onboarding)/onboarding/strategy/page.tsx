@@ -1,19 +1,31 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useOnboardingState } from '@/hooks/use-onboarding-state';
 import { LEAD_GEN_STRATEGIES } from '@/lib/onboarding-data';
 import { ProgressIndicator } from '@/components/onboarding/progress-indicator';
+import { useState, useEffect } from 'react';
 
 export default function StrategyPage() {
     const router = useRouter();
-    const { strategy, setStrategy, currentStep, nextStep } = useOnboardingState();
+    const { strategy, setStrategy, currentStep, nextStep, goToStep } = useOnboardingState();
+    const [isLoading, setIsLoading] = useState(false);
+
+    // Sync currentStep with this page (step 2)
+    useEffect(() => {
+        if (currentStep !== 2) {
+            goToStep(2);
+        }
+    }, [currentStep, goToStep]);
 
     const handleContinue = () => {
         if (strategy) {
-            nextStep();
-            router.push('/onboarding/template');
+            setIsLoading(true);
+            setTimeout(() => {
+                nextStep();
+                router.push('/onboarding/template');
+            }, 800);
         }
     };
 
@@ -88,21 +100,48 @@ export default function StrategyPage() {
 
                     {/* Continue Button */}
                     <motion.div
-                        className="flex justify-center"
+                        className="flex flex-col items-center gap-4"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ duration: 0.6, delay: 0.3 }}
                     >
                         <button
                             onClick={handleContinue}
-                            disabled={!strategy}
+                            disabled={!strategy || isLoading}
                             className="group relative inline-flex items-center justify-center px-12 py-4 text-lg font-medium rounded-full overflow-hidden border-2 border-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
                         >
                             <div className="absolute inset-0 bg-foreground -translate-x-full group-hover:translate-x-0 transition-transform duration-500 ease-out" />
                             <span className="relative z-10 text-foreground group-hover:text-background transition-colors duration-300">
-                                Continue
+                                {isLoading ? 'Processing...' : 'Continue'}
                             </span>
                         </button>
+
+                        {/* Loading indicator dots */}
+                        <AnimatePresence>
+                            {isLoading && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -10 }}
+                                    className="flex gap-2"
+                                >
+                                    {[0, 1, 2].map((i) => (
+                                        <motion.div
+                                            key={i}
+                                            className="w-2 h-2 bg-foreground rounded-full"
+                                            animate={{
+                                                y: [0, -10, 0],
+                                            }}
+                                            transition={{
+                                                duration: 0.6,
+                                                repeat: Infinity,
+                                                delay: i * 0.2,
+                                            }}
+                                        />
+                                    ))}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </motion.div>
                 </div>
             </div>

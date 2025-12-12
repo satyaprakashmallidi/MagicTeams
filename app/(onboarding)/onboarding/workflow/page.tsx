@@ -1,8 +1,8 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, FileText } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useOnboardingState } from '@/hooks/use-onboarding-state';
 import { ProgressIndicator } from '@/components/onboarding/progress-indicator';
@@ -21,10 +21,17 @@ type PromptMode = 'ai-generate' | 'paste-text' | null;
 
 export default function WorkflowPage() {
   const router = useRouter();
-  const { template, strategy, workflow, setWorkflow, currentStep, nextStep } = useOnboardingState();
+  const { template, strategy, workflow, setWorkflow, currentStep, nextStep, goToStep } = useOnboardingState();
   const [mode, setMode] = useState<PromptMode>(null);
   const [promptInput, setPromptInput] = useState('');
   const [isEnhancing, setIsEnhancing] = useState(false);
+
+  // Sync currentStep with this page (step 4)
+  useEffect(() => {
+    if (currentStep !== 4) {
+      goToStep(4);
+    }
+  }, [currentStep, goToStep]);
 
   if (!template) {
     router.push('/onboarding/template');
@@ -41,18 +48,19 @@ export default function WorkflowPage() {
   };
 
   const enhancePrompt = async (description: string): Promise<string> => {
-    // Simple template-based enhancement
-    return `You are a professional ${template.name} assistant helping with ${strategy || 'general business'}.
+    const { enhancePromptWithAI } = await import('@/app/actions/enhance-prompt');
 
-${description}
+    const result = await enhancePromptWithAI(
+      description,
+      template?.name || 'AI Agent',
+      strategy || 'general business'
+    );
 
-Key responsibilities:
-- Maintain a ${template.name === 'Customer Support Agent' ? 'helpful and empathetic' : 'professional and efficient'} tone
-- Provide accurate and relevant information
-- Guide users through their needs effectively
-- Stay focused on ${strategy || 'business'} objectives
+    if (!result.success || !result.enhancedPrompt) {
+      throw new Error(result.error || 'Failed to enhance prompt');
+    }
 
-Always be courteous, clear, and professional in your communication.`;
+    return result.enhancedPrompt;
   };
 
   const handleContinue = async () => {
@@ -271,16 +279,52 @@ Always be courteous, clear, and professional in your communication.`;
                 >
                   Back
                 </button>
-                <button
-                  onClick={handleContinue}
-                  disabled={!promptInput.trim() || isEnhancing}
-                  className="group relative inline-flex items-center justify-center px-12 py-3 text-lg font-medium rounded-full overflow-hidden border-2 border-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
-                >
-                  <div className="absolute inset-0 bg-foreground -translate-x-full group-hover:translate-x-0 transition-transform duration-500 ease-out" />
-                  <span className="relative z-10 text-foreground group-hover:text-background transition-colors duration-300">
-                    {isEnhancing ? 'Enhancing...' : mode === 'ai-generate' ? 'Enhance & Continue' : 'Continue'}
-                  </span>
-                </button>
+                <div className="flex flex-col items-center gap-4">
+                  <button
+                    onClick={handleContinue}
+                    disabled={!promptInput.trim() || isEnhancing}
+                    className="group relative inline-flex items-center justify-center px-12 py-3 text-lg font-medium rounded-full overflow-hidden border-2 border-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
+                  >
+                    <div className="absolute inset-0 bg-foreground -translate-x-full group-hover:translate-x-0 transition-transform duration-500 ease-out" />
+                    <span className="relative z-10 text-foreground group-hover:text-background transition-colors duration-300 flex items-center gap-2">
+                      {isEnhancing ? (
+                        <>
+                          <Sparkles className="w-4 h-4 animate-pulse" />
+                          Enhancing with AI...
+                        </>
+                      ) : (
+                        mode === 'ai-generate' ? 'Enhance & Continue' : 'Continue'
+                      )}
+                    </span>
+                  </button>
+
+                  {/* Loading indicator dots */}
+                  <AnimatePresence>
+                    {isEnhancing && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="flex gap-2"
+                      >
+                        {[0, 1, 2].map((i) => (
+                          <motion.div
+                            key={i}
+                            className="w-2 h-2 bg-foreground rounded-full"
+                            animate={{
+                              y: [0, -10, 0],
+                            }}
+                            transition={{
+                              duration: 0.6,
+                              repeat: Infinity,
+                              delay: i * 0.2,
+                            }}
+                          />
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
             </motion.div>
           )}

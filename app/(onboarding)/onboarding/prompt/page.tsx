@@ -33,6 +33,11 @@ export default function PromptPage() {
     };
 
     const enhancePrompt = async (description: string): Promise<string> => {
+        const { enhancePromptWithAI } = await import('@/app/actions/enhance-prompt');
+        const result = await enhancePromptWithAI(description, template.name, template.strategy);
+        if (result.success) {
+            return result.enhancedPrompt!;
+        }
         // TODO: Integrate with your AI enhancement API
         // For now, return a formatted version
         return `You are a professional ${template.name} assistant. ${description}
