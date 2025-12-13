@@ -19,6 +19,7 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [termsAccepted, setTermsAccepted] = useState(false)
+  const [communicationsAccepted, setCommunicationsAccepted] = useState(false)
   const router = useRouter()
 
   const handleSignIn = async (formData: FormData) => {
@@ -40,6 +41,11 @@ export function LoginForm() {
   const handleSignUp = async (formData: FormData) => {
     if (!termsAccepted) {
       setError("You must accept the terms and conditions to sign up.")
+      return
+    }
+
+    if (!communicationsAccepted) {
+      setError("You must agree to receive communications to sign up.")
       return
     }
 
@@ -148,18 +154,34 @@ export function LoginForm() {
             </div>
 
             {isSignUp && (
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="terms"
-                  checked={termsAccepted}
-                  onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
-                />
-                <label
-                  htmlFor="terms"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  I accept the <Link href="https://termsandconditions.magicteams.ai/" className="underline hover:text-primary" target="_blank" rel="noopener noreferrer">terms and conditions</Link>
-                </label>
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="terms"
+                    checked={termsAccepted}
+                    onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
+                  />
+                  <label
+                    htmlFor="terms"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    I accept the <Link href="https://termsandconditions.magicteams.ai/" className="underline hover:text-primary" target="_blank" rel="noopener noreferrer">terms and conditions</Link>
+                  </label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="communications"
+                    checked={communicationsAccepted}
+                    onCheckedChange={(checked) => setCommunicationsAccepted(checked as boolean)}
+                  />
+                  <label
+                    htmlFor="communications"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    I agree to receive communication from email and SMS.
+                  </label>
+                </div>
               </div>
             )}
           </CardContent>
