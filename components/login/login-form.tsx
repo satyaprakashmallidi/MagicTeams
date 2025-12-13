@@ -9,6 +9,7 @@ import { useState } from "react"
 import { Icon } from "@/components/ui/icons"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { Checkbox } from "@/components/ui/checkbox"
 
 type ActionResult = { error?: string; success?: string } | undefined
 
@@ -17,6 +18,7 @@ export function LoginForm() {
   const [isSignUp, setIsSignUp] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [termsAccepted, setTermsAccepted] = useState(false)
   const router = useRouter()
 
   const handleSignIn = async (formData: FormData) => {
@@ -36,6 +38,11 @@ export function LoginForm() {
   }
 
   const handleSignUp = async (formData: FormData) => {
+    if (!termsAccepted) {
+      setError("You must accept the terms and conditions to sign up.")
+      return
+    }
+
     setIsLoading(true)
     setError(null)
     setSuccessMessage(null)
@@ -76,24 +83,24 @@ export function LoginForm() {
             {isSignUp ? 'Create an account' : 'Welcome back'}
           </CardTitle>
           <CardDescription>
-            {isSignUp 
+            {isSignUp
               ? 'Enter your email and password to create your account'
               : 'Enter your email and password to login to your account'}
           </CardDescription>
         </CardHeader>
-        
+
         {error && (
           <div className="mx-6 mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-md text-sm text-destructive">
             {error}
           </div>
         )}
-        
+
         {successMessage && (
           <div className="mx-6 mb-4 p-4 bg-green-500/10 border border-green-500/20 rounded-md text-sm text-green-500">
             {successMessage}
           </div>
         )}
-        
+
         <form onSubmit={(e) => {
           e.preventDefault();
           const formData = new FormData(e.currentTarget);
@@ -125,7 +132,7 @@ export function LoginForm() {
                 required
                 disabled={isLoading}
               />
-              
+
               {!isSignUp && (
                 <div className="flex justify-end mt-2">
                   <Button
@@ -139,6 +146,22 @@ export function LoginForm() {
                 </div>
               )}
             </div>
+
+            {isSignUp && (
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="terms"
+                  checked={termsAccepted}
+                  onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
+                />
+                <label
+                  htmlFor="terms"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  I accept the <Link href="https://termsandconditions.magicteams.ai/" className="underline hover:text-primary" target="_blank" rel="noopener noreferrer">terms and conditions</Link>
+                </label>
+              </div>
+            )}
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
             <div className="w-full space-y-2">
