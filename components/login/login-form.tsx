@@ -44,11 +44,6 @@ export function LoginForm() {
       return
     }
 
-    if (!communicationsAccepted) {
-      setError("You must agree to receive communications to sign up.")
-      return
-    }
-
     setIsLoading(true)
     setError(null)
     setSuccessMessage(null)
