@@ -57,6 +57,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useWebhooks } from '@/hooks/use-webhooks';
 import { WEBHOOK_EVENTS, WebhookEvent } from '@/types/webhooks';
+import { BotKnowledgeBase } from './bot-knowledge-base';
 
 
 
@@ -75,6 +76,7 @@ const formSchema = z.object({
   appointment_tool_id: z.string().optional(),
   is_call_transfer_allowed: z.boolean().default(false),
   call_transfer_number: z.string().optional(),
+  knowledge_base_usage_guide: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -199,16 +201,7 @@ export function BotDetails() {
   const [isWebhooksDropdownOpen, setIsWebhooksDropdownOpen] = useState(false);
 
   // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (isToolsDropdownOpen && !(event.target as Element).closest('.tools-dropdown')) {
-        setIsToolsDropdownOpen(false);
-      }
-    };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isToolsDropdownOpen]);
 
   // Reset tools to original state
   const resetTools = () => {
@@ -411,6 +404,7 @@ export function BotDetails() {
     setValue("appointment_tool_id", bot.appointment_tool_id || undefined);
     setValue("is_call_transfer_allowed", bot.is_call_transfer_allowed || false);
     setValue("call_transfer_number", bot.call_transfer_number || '');
+    setValue("knowledge_base_usage_guide", bot.knowledge_base_usage_guide || '');
 
 
     // Set selected tools, filtering out the system 'hangUp' tool from the user-facing selection
@@ -418,6 +412,11 @@ export function BotDetails() {
     setValue("selected_tools", botSelectedTools);
     setSelectedTools(botSelectedTools);
     setOriginalSelectedTools(botSelectedTools);
+
+    // Set selected webhooks
+    const botSelectedWebhooks = (bot as any).selected_webhooks || [];
+    setSelectedWebhooks(botSelectedWebhooks);
+    setOriginalSelectedWebhooks(botSelectedWebhooks);
   }, [botId, bots, voices, voicesLoading, knowledgeBases, setValue]);
 
   const handleDuplicateBot = async () => {
@@ -517,6 +516,8 @@ export function BotDetails() {
         appointment_tool_id: data.appointment_tool_id,
         is_call_transfer_allowed: data.is_call_transfer_allowed,
         call_transfer_number: data.call_transfer_number,
+        selected_tools: selectedTools,
+        selected_webhooks: selectedWebhooks,
       });
 
       // Prepare the update data for Supabase
@@ -535,6 +536,8 @@ export function BotDetails() {
         is_call_transfer_allowed: data.is_call_transfer_allowed,
         call_transfer_number: data.call_transfer_number,
         selected_tools: selectedTools,
+        selected_webhooks: selectedWebhooks,
+        knowledge_base_usage_guide: data.knowledge_base_usage_guide,
       };
 
       // Also update Supabase for local consistency
@@ -593,6 +596,8 @@ export function BotDetails() {
       } finally {
         setToolsLoading(false);
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -684,7 +689,12 @@ export function BotDetails() {
 
 
     if (selectedKB) {
-      systemPrompt = `${systemPrompt}\n\nYou have access to a knowledge base about "${selectedKB.name}". Use the queryCorpus tool to search this knowledge base when answering questions.`;
+      let kbPrompt = `\n\nYou have access to a knowledge base about "${selectedKB.name}". Use the queryCorpus tool to search this knowledge base when answering questions.`;
+      const usageGuide = watch('knowledge_base_usage_guide');
+      if (usageGuide) {
+        kbPrompt += `\n\nInstructions for using the knowledge base: ${usageGuide}`;
+      }
+      systemPrompt = `${systemPrompt}${kbPrompt}`;
     }
 
     const isCallTransferEnabled = bot?.is_call_transfer_allowed;
@@ -1680,7 +1690,12 @@ export function BotDetails() {
                                   >
                                     <Checkbox
                                       checked={selectedTools.includes(tool.toolId)}
-                                      readOnly
+                                      onCheckedChange={() => {
+                                        const newSelectedTools = selectedTools.includes(tool.toolId)
+                                          ? selectedTools.filter(id => id !== tool.toolId)
+                                          : [...selectedTools, tool.toolId];
+                                        setSelectedTools(newSelectedTools);
+                                      }}
                                       className="mr-2"
                                     />
                                     <span className="text-sm text-foreground">
@@ -1733,9 +1748,28 @@ export function BotDetails() {
 
           {/* Knowledge Base Tab */}
           <TabsContent value="knowledge" className="p-6">
-            <div className="text-center py-12 text-muted-foreground">
-              <p>Knowledge Base configuration coming soon...</p>
-            </div>
+            {botId && (
+              <BotKnowledgeBase
+                botId={botId}
+                botName={watch('name')}
+                knowledgeBaseId={watch('knowledge_base_id')}
+                onUpdateBot={(updates) => {
+                  // Update form value if KB ID changes
+                  if (updates.knowledge_base_id) {
+                    setValue('knowledge_base_id', updates.knowledge_base_id);
+                    setSelectedKnowledgeBase(updates.knowledge_base_id);
+                  }
+
+                  // Update local bot state
+                  const currentBot = bots.find(b => b.id === botId);
+                  if (currentBot) {
+                    updateBot(botId, { ...currentBot, ...updates });
+                  }
+                }}
+                knowledgeBaseUsageGuide={watch('knowledge_base_usage_guide')}
+                onUpdateUsageGuide={(guide) => setValue('knowledge_base_usage_guide', guide)}
+              />
+            )}
           </TabsContent>
         </Tabs>
       </div>
