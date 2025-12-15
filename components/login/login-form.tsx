@@ -9,6 +9,7 @@ import { useState } from "react"
 import { Icon } from "@/components/ui/icons"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { Checkbox } from "@/components/ui/checkbox"
 
 type ActionResult = { error?: string; success?: string } | undefined
 
@@ -17,6 +18,8 @@ export function LoginForm() {
   const [isSignUp, setIsSignUp] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [termsAccepted, setTermsAccepted] = useState(false)
+  const [communicationsAccepted, setCommunicationsAccepted] = useState(false)
   const router = useRouter()
 
   const handleSignIn = async (formData: FormData) => {
@@ -44,6 +47,11 @@ export function LoginForm() {
   }
 
   const handleSignUp = async (formData: FormData) => {
+    if (!termsAccepted) {
+      setError("You must accept the terms and conditions to sign up.")
+      return
+    }
+
     setIsLoading(true)
     setError(null)
     setSuccessMessage(null)
@@ -147,6 +155,38 @@ export function LoginForm() {
                 </div>
               )}
             </div>
+
+            {isSignUp && (
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="terms"
+                    checked={termsAccepted}
+                    onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
+                  />
+                  <label
+                    htmlFor="terms"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    I accept the <Link href="https://termsandconditions.magicteams.ai/" className="underline hover:text-primary" target="_blank" rel="noopener noreferrer">terms and conditions</Link>
+                  </label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="communications"
+                    checked={communicationsAccepted}
+                    onCheckedChange={(checked) => setCommunicationsAccepted(checked as boolean)}
+                  />
+                  <label
+                    htmlFor="communications"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    I agree to receive communication from email and SMS.
+                  </label>
+                </div>
+              </div>
+            )}
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
             <div className="w-full space-y-2">
