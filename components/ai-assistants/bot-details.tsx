@@ -32,7 +32,8 @@ import { useBots } from "@/hooks/use-bots";
 import { usePricing } from "@/hooks/use-pricing";
 import { TwilioCredentials, TwilioPhoneNumber } from "@/types/twilio";
 import { useKnowledgeBase } from '@/hooks/use-knowledge-base';
-import { getAllTools } from '@/components/tools/toolsService';
+import { getAllTools, createTool } from '@/components/tools/toolsService';
+import InlineToolCreate from '@/components/tools/inline-tool-create';
 import {
   Dialog,
   DialogContent,
@@ -54,6 +55,8 @@ import { Badge } from "@/components/ui/badge";
 import { useAppointmentTools } from '@/hooks/use-appointments';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useWebhooks } from '@/hooks/use-webhooks';
+import { WEBHOOK_EVENTS, WebhookEvent } from '@/types/webhooks';
 
 
 
@@ -110,6 +113,15 @@ export function BotDetails() {
   const [appointmentToolsOpen, setAppointmentToolsOpen] = useState(false);
   const [webhooksOpen, setWebhooksOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
+
+  // Inline webhook creation form state
+  const [showInlineWebhookForm, setShowInlineWebhookForm] = useState(false);
+  const [newWebhookUrl, setNewWebhookUrl] = useState('');
+  const [newWebhookEvents, setNewWebhookEvents] = useState<string[]>([]);
+  const [webhookFormErrors, setWebhookFormErrors] = useState<{ [key: string]: string }>({});
+
+  // Inline tool creation state
+  const [showInlineToolForm, setShowInlineToolForm] = useState(false);
 
   const handleSync = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -180,6 +192,12 @@ export function BotDetails() {
   const [toolsLoading, setToolsLoading] = useState(false);
   const [isToolsDropdownOpen, setIsToolsDropdownOpen] = useState(false);
 
+  // Webhook management
+  const { webhooks, isLoading: webhooksLoading, createWebhook } = useWebhooks();
+  const [selectedWebhooks, setSelectedWebhooks] = useState<string[]>([]);
+  const [originalSelectedWebhooks, setOriginalSelectedWebhooks] = useState<string[]>([]);
+  const [isWebhooksDropdownOpen, setIsWebhooksDropdownOpen] = useState(false);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -226,6 +244,106 @@ export function BotDetails() {
     };
 
     fetchTools();
+  }, [user?.id, toast]);
+
+  // Handle inline webhook creation```
+  const handleCreateInlineWebhook = async () => {
+    // Validate form
+    const errors: { [key: string]: string } = {};
+
+    if (!newWebhookUrl.trim()) {
+      errors.url = 'URL is required';
+    } else {
+      try {
+        new URL(newWebhookUrl);
+      } catch {
+        errors.url = 'Invalid URL format';
+      }
+    }
+
+    if (newWebhookEvents.length === 0) {
+      errors.events = 'At least one event must be selected';
+    }
+
+    setWebhookFormErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      return;
+    }
+
+    try {
+      await createWebhook({
+        url: newWebhookUrl.trim(),
+        events: newWebhookEvents as WebhookEvent[],
+      });
+
+      toast({
+        title: "Success",
+        description: "Webhook created successfully",
+      });
+
+      // Reset form
+      setNewWebhookUrl('');
+      setNewWebhookEvents([]);
+      setWebhookFormErrors({});
+      setShowInlineWebhookForm(false);
+    } catch (error) {
+      console.error('Error creating webhook:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create webhook",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle inline tool creation
+  const handleInlineToolSave = async (tool: { name: string, definition: any }) => {
+    if (!user?.id) return;
+
+    try {
+      const response = await createTool(user.id, "", {
+        name: tool.name,
+        definition: tool.definition
+      });
+
+      toast({
+        title: "Success",
+        description: "Tool created successfully",
+      });
+
+      // Auto-select the newly created tool
+      if (response.tool?.toolId) {
+        setSelectedTools(prev => [...prev, response.tool.toolId]);
+      }
+
+      // Refresh tools list
+      await refreshTools();
+
+      setShowInlineToolForm(false);
+    } catch (error) {
+      console.error('Error creating tool:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create tool",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Refresh tools list handler
+  const refreshTools = useCallback(async () => {
+    if (!user?.id) return;
+
+    setToolsLoading(true);
+    try {
+      const response = await getAllTools(user.id);
+      setAvailableTools(response.tools?.results || []);
+    } catch (error) {
+      console.error('Error fetching tools:', error);
+    } finally {
+      setToolsLoading(false);
+    }
   }, [user?.id, toast]);
 
   useEffect(() => {
@@ -460,8 +578,21 @@ export function BotDetails() {
         description: error.message || "Failed to update bot",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
+      if (!user?.id) return;
+      setToolsLoading(true);
+      try {
+        const res = await getAllTools(user.id);
+        setAvailableTools(res.tools?.results || []);
+      } catch (e) {
+        console.error('Error fetching tools:', e);
+        toast({
+          title: "Error loading tools",
+          description: String(e),
+          variant: "destructive"
+        });
+      } finally {
+        setToolsLoading(false);
+      }
     }
   };
 
@@ -1313,14 +1444,187 @@ export function BotDetails() {
                     />
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <div className="p-4 pt-0">
+                    <div className="p-4 pt-0 space-y-4">
+                      <Popover open={isWebhooksDropdownOpen} onOpenChange={setIsWebhooksDropdownOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={isWebhooksDropdownOpen}
+                            className="w-full justify-between h-10"
+                            onClick={(e) => { e.preventDefault(); setIsWebhooksDropdownOpen(!isWebhooksDropdownOpen); }}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Icon name="webhook" className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm font-medium">
+                                {selectedWebhooks.length > 0 ? `${selectedWebhooks.length} webhook(s) selected` : 'Select webhooks'}
+                              </span>
+                            </div>
+                            <Icon name="chevrons-up-down" className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                          <div className="p-2">
+                            {webhooksLoading ? (
+                              <div className="p-2 text-sm text-muted-foreground text-center">Loading...</div>
+                            ) : webhooks.length === 0 ? (
+                              <div className="p-2 text-sm text-muted-foreground text-center">
+                                No webhooks available.
+                              </div>
+                            ) : (
+                              <div className="mt-1 space-y-1 max-h-48 overflow-y-auto">
+                                {webhooks.map((webhook) => (
+                                  <div
+                                    key={webhook.webhook_id}
+                                    className="flex items-center px-2 py-1.5 hover:bg-accent rounded-md cursor-pointer"
+                                    onClick={() => {
+                                      const newSelectedWebhooks = selectedWebhooks.includes(webhook.webhook_id)
+                                        ? selectedWebhooks.filter(id => id !== webhook.webhook_id)
+                                        : [...selectedWebhooks, webhook.webhook_id];
+                                      setSelectedWebhooks(newSelectedWebhooks);
+                                    }}
+                                  >
+                                    <Checkbox
+                                      checked={selectedWebhooks.includes(webhook.webhook_id)}
+                                      className="mr-2"
+                                    />
+                                    <div className="flex-1">
+                                      <span className="text-sm text-foreground truncate block">
+                                        {webhook.url}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+
+                      {/* Inline Webhook Creation Form */}
+                      {!showInlineWebhookForm ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full flex items-center gap-2"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setShowInlineWebhookForm(true);
+                          }}
+                        >
+                          <Icon name="plus" className="h-4 w-4" />
+                          Create New Webhook
+                        </Button>
+                      ) : (
+                        <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-medium text-sm">Create New Webhook</h4>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setShowInlineWebhookForm(false);
+                                setNewWebhookUrl('');
+                                setNewWebhookEvents([]);
+                                setWebhookFormErrors({});
+                              }}
+                            >
+                              <Icon name="x" className="h-4 w-4" />
+                            </Button>
+                          </div>
+
+                          {/* URL Input */}
+                          <div className="space-y-2">
+                            <Label htmlFor="inline-webhook-url">Webhook URL *</Label>
+                            <Input
+                              id="inline-webhook-url"
+                              type="url"
+                              placeholder="https://your-domain.com/webhook"
+                              value={newWebhookUrl}
+                              onChange={(e) => setNewWebhookUrl(e.target.value)}
+                              className={webhookFormErrors.url ? 'border-red-500' : ''}
+                            />
+                            {webhookFormErrors.url && (
+                              <p className="text-sm text-red-500">{webhookFormErrors.url}</p>
+                            )}
+                          </div>
+
+                          {/* Events Selection */}
+                          <div className="space-y-2">
+                            <Label>Webhook Events *</Label>
+                            <div className="space-y-2">
+                              {WEBHOOK_EVENTS.map((event) => (
+                                <div key={event.value} className="flex items-start space-x-3">
+                                  <Checkbox
+                                    id={`inline-${event.value}`}
+                                    checked={newWebhookEvents.includes(event.value)}
+                                    onCheckedChange={(checked) => {
+                                      if (checked) {
+                                        setNewWebhookEvents([...newWebhookEvents, event.value]);
+                                      } else {
+                                        setNewWebhookEvents(newWebhookEvents.filter(e => e !== event.value));
+                                      }
+                                    }}
+                                  />
+                                  <div className="grid gap-1.5 leading-none">
+                                    <label
+                                      htmlFor={`inline-${event.value}`}
+                                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                    >
+                                      {event.label}
+                                    </label>
+                                    <p className="text-xs text-muted-foreground">
+                                      {event.description}
+                                    </p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            {webhookFormErrors.events && (
+                              <p className="text-sm text-red-500">{webhookFormErrors.events}</p>
+                            )}
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setShowInlineWebhookForm(false);
+                                setNewWebhookUrl('');
+                                setNewWebhookEvents([]);
+                                setWebhookFormErrors({});
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handleCreateInlineWebhook();
+                              }}
+                            >
+                              Create Webhook
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
                       <p className="text-sm text-muted-foreground">
-                        Webhook configuration coming soon...
+                        Select webhooks to receive real-time notifications for this bot.
                       </p>
                     </div>
                   </CollapsibleContent>
                 </div>
               </Collapsible>
+
+
 
               {/* Tools Section */}
               <Collapsible open={toolsOpen} onOpenChange={setToolsOpen}>
@@ -1389,6 +1693,28 @@ export function BotDetails() {
                           </div>
                         </PopoverContent>
                       </Popover>
+
+                      {/* Inline Tool Creation */}
+                      {!showInlineToolForm ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full flex items-center gap-2"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setShowInlineToolForm(true);
+                          }}
+                        >
+                          <Icon name="plus" className="h-4 w-4" />
+                          Create New Tool
+                        </Button>
+                      ) : (
+                        <InlineToolCreate
+                          onSave={handleInlineToolSave}
+                          onCancel={() => setShowInlineToolForm(false)}
+                        />
+                      )}
+
                       <p className="text-sm text-muted-foreground">
                         Select tools this bot can use.
                       </p>

@@ -177,15 +177,6 @@ export function BotList() {
 
                 {/* Actions Menu */}
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {/* Toggle Switch */}
-                  <div onClick={(e) => e.stopPropagation()}>
-                    <Switch
-                      checked={bot.is_enabled !== false}
-                      onCheckedChange={(value) => handleToggleEnabled(bot.id, value)}
-                      className="data-[state=checked]:bg-green-500"
-                    />
-                  </div>
-
                   <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -199,6 +190,25 @@ export function BotList() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                          }}
+                          className="flex items-center justify-between gap-2"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Icon name={bot.is_enabled !== false ? "power" : "powerOff"} className="h-4 w-4" />
+                            {bot.is_enabled !== false ? "Disable Bot" : "Enable Bot"}
+                          </div>
+                          <Switch
+                            checked={bot.is_enabled !== false}
+                            onCheckedChange={(value) => handleToggleEnabled(bot.id, value)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="data-[state=checked]:bg-green-500"
+                          />
+                        </DropdownMenuItem>
+
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={(e) => {
                             e.stopPropagation();
