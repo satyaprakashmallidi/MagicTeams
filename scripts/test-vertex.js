@@ -1,30 +1,41 @@
-'use server';
+const fs = require('fs');
+const path = require('path');
+const https = require('https');
 
-/**
- * Server action to enhance AI agent prompts using Google Gemini API
- * Matches the working implementation from smart-column/analyze/route.ts
- */
+// Read .env.local
+const envPath = path.join(__dirname, '..', '.env.local');
+let apiKey = '';
 
-export async function enhancePromptWithAI(
-    description: string,
-    templateName: string,
-    strategy: string
-): Promise<{ success: boolean; enhancedPrompt?: string; error?: string }> {
-    try {
-        const apiKey = process.env.GOOGLE_VERTEX_API_KEY;
-        const project = "peppy-citron-480805-h9";
-        const location = "us-central1";
-        const model = "gemini-live-2.5-flash-preview-native-audio-09-2025";
+try {
+    const envContent = fs.readFileSync(envPath, 'utf8');
+    const match = envContent.match(/GOOGLE_VERTEX_API_KEY=(.*)/);
+    if (match && match[1]) {
+        apiKey = match[1].trim();
+    }
+} catch (e) {
+    console.error('Error reading .env.local:', e.message);
+    process.exit(1);
+}
 
-        if (!apiKey) {
-            throw new Error('Google Vertex API key not configured');
-        }
+if (!apiKey) {
+    console.error('GOOGLE_VERTEX_API_KEY not found in .env.local');
+    process.exit(1);
+}
 
-        // Vertex AI Endpoint
-        const endpoint = `https://${location}-aiplatform.googleapis.com/v1/projects/${project}/locations/${location}/publishers/google/models/${model}:generateContent?key=${apiKey}`;
+async function testEnhancePrompt() {
+    console.log('Testing Google Vertex AI integration...');
+    console.log('API Key found (length):', apiKey.length);
 
-        // Create the prompt for Gemini
-        const systemPrompt = `You are an expert at creating system prompts for AI voice agents. 
+    const project = "peppy-citron-480805-h9";
+    const location = "us-central1";
+    const model = "gemini-live-2.5-flash-preview-native-audio-09-2025";
+    const endpoint = `https://${location}-aiplatform.googleapis.com/v1/projects/${project}/locations/${location}/publishers/google/models/${model}:generateContent?key=${apiKey}`;
+
+    const description = "A helpful sales agent for a real estate company";
+    const templateName = "Sales Agent";
+    const strategy = "Real Estate";
+
+    const systemPrompt = `You are an expert at creating system prompts for AI voice agents. 
 Given a user's description, create a detailed, professional system prompt for a ${templateName} AI agent helping with ${strategy}.
 
 The system prompt should:
@@ -38,12 +49,12 @@ User's description: ${description}
 
 Generate ONLY the system prompt, without any additional explanation or formatting.`;
 
-        // Make the API request
+    try {
         const response = await fetch(endpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                // 'x-goog-user-project': project // Optional, but good practice if needed
+                'x-goog-user-project': project
             },
             body: JSON.stringify({
                 contents: [
@@ -67,28 +78,23 @@ Generate ONLY the system prompt, without any additional explanation or formattin
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('Google Vertex AI API error:', errorText);
             throw new Error(`API request failed: ${response.status} - ${errorText}`);
         }
 
         const data = await response.json();
-
-        // Extract the generated text
         const enhancedPrompt = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
         if (!enhancedPrompt) {
             throw new Error('No response generated from AI');
         }
 
-        return {
-            success: true,
-            enhancedPrompt: enhancedPrompt.trim(),
-        };
+        console.log('\nSUCCESS! Generated Prompt:\n');
+        console.log(enhancedPrompt);
+        console.log('\nIntegration verified.');
+
     } catch (error) {
-        console.error('Error enhancing prompt:', error);
-        return {
-            success: false,
-            error: error instanceof Error ? error.message : 'Failed to enhance prompt',
-        };
+        console.error('\nFAILED:', error.message);
     }
 }
+
+testEnhancePrompt();

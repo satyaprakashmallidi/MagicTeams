@@ -1,7 +1,7 @@
 "use client"
 import { BotDetails } from '@/components/ai-assistants/bot-details';
 import { BotList } from '@/components/ai-assistants/bot-list';
-import { CreateBotForm } from '@/components/dashboard/create-bot-form';
+import { CreateBotWizard } from '@/components/dashboard/create-bot-wizard';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icons';
@@ -33,8 +33,8 @@ const page = () => {
                 New Bot
               </Button>
             </DialogTrigger>
-            <DialogContent>
-              <CreateBotForm onClose={() => setOpen(false)} />
+            <DialogContent className="sm:max-w-[800px] p-0 overflow-hidden">
+              <CreateBotWizard onClose={() => setOpen(false)} />
             </DialogContent>
           </Dialog>
 

@@ -1,0 +1,89 @@
+
+--- Testing Vertex generateContent ---
+URL: https://us-central1-aiplatform.googleapis.com/v1/projects/peppy-citron-480805-h9/locations/us-central1/publishers/google/models/gemini-live-2.5-flash-preview-native-audio-09-2025:generateContent?key=AQ.Ab8RN6JCdtKHYmhEjHDy7xIrQJUKOSNfz5VjRq5x8Wba_JyPAQ
+Status: 401 Unauthorized
+Error Body: {
+  "error": {
+    "code": 401,
+    "message": "The bound service account is deleted or disabled. The service account bound to the API key must be active.",
+    "status": "UNAUTHENTICATED",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "ACCOUNT_STATE_INVALID",
+        "metadata": {
+          "service": "aiplatform.googleapis.com",
+          "method": "google.cloud.aiplatform.v1.PredictionService.GenerateContent"
+        }
+      }
+    ]
+  }
+}
+
+
+--- Testing Vertex streamGenerateContent ---
+URL: https://us-central1-aiplatform.googleapis.com/v1/projects/peppy-citron-480805-h9/locations/us-central1/publishers/google/models/gemini-live-2.5-flash-preview-native-audio-09-2025:streamGenerateContent?key=AQ.Ab8RN6JCdtKHYmhEjHDy7xIrQJUKOSNfz5VjRq5x8Wba_JyPAQ
+Status: 401 Unauthorized
+Error Body: [{
+  "error": {
+    "code": 401,
+    "message": "The bound service account is deleted or disabled. The service account bound to the API key must be active.",
+    "status": "UNAUTHENTICATED",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "ACCOUNT_STATE_INVALID",
+        "metadata": {
+          "method": "google.cloud.aiplatform.v1.PredictionService.StreamGenerateContent",
+          "service": "aiplatform.googleapis.com"
+        }
+      }
+    ]
+  }
+}
+]
+
+--- Testing Global AI Platform ---
+URL: https://aiplatform.googleapis.com/v1/projects/peppy-citron-480805-h9/locations/us-central1/publishers/google/models/gemini-live-2.5-flash-preview-native-audio-09-2025:generateContent?key=AQ.Ab8RN6JCdtKHYmhEjHDy7xIrQJUKOSNfz5VjRq5x8Wba_JyPAQ
+Status: 401 Unauthorized
+Error Body: {
+  "error": {
+    "code": 401,
+    "message": "The bound service account is deleted or disabled. The service account bound to the API key must be active.",
+    "status": "UNAUTHENTICATED",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "ACCOUNT_STATE_INVALID",
+        "metadata": {
+          "method": "google.cloud.aiplatform.v1.PredictionService.GenerateContent",
+          "service": "aiplatform.googleapis.com"
+        }
+      }
+    ]
+  }
+}
+
+
+--- Testing Generative Language API ---
+URL: https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AQ.Ab8RN6JCdtKHYmhEjHDy7xIrQJUKOSNfz5VjRq5x8Wba_JyPAQ
+Status: 401 Unauthorized
+Error Body: {
+  "error": {
+    "code": 401,
+    "message": "API keys are not supported by this API. Expected OAuth2 access token or other authentication credentials that assert a principal. See https://cloud.google.com/docs/authentication",
+    "status": "UNAUTHENTICATED",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "CREDENTIALS_MISSING",
+        "domain": "googleapis.com",
+        "metadata": {
+          "method": "google.ai.generativelanguage.v1beta.GenerativeService.GenerateContent",
+          "service": "generativelanguage.googleapis.com"
+        }
+      }
+    ]
+  }
+}
+
