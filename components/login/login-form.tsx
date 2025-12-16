@@ -30,8 +30,16 @@ export function LoginForm() {
       if (result?.error) {
         setError(result.error)
         setIsLoading(false)
+      } else if (result?.success) {
+        // Login successful - check localStorage for onboarding status
+        const onboardingCompleted = localStorage.getItem('onboarding_completed')
+
+        if (onboardingCompleted === 'true') {
+          router.push('/dashboard/aiassistant')
+        } else {
+          router.push('/onboarding/welcome')
+        }
       }
-      // No need to handle success for login as it redirects
     } catch (err: any) {
       setError(err.message || 'An error occurred during login')
       setIsLoading(false)

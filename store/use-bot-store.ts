@@ -213,6 +213,7 @@ export const useBotStore = create<BotStore>((set, get) => ({
         model: originalBot.model || 'ultravox-v0.7',
         custom_questions: originalBot.custom_questions ? JSON.parse(JSON.stringify(originalBot.custom_questions)) : [],
         selected_tools: originalBot.selected_tools ? [...originalBot.selected_tools] : [],
+        selected_webhooks: originalBot.selected_webhooks ? [...originalBot.selected_webhooks] : [],
         first_speaker: originalBot.first_speaker,
         is_enabled: originalBot.is_enabled !== false,
       };

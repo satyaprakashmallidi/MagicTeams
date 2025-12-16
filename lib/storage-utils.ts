@@ -50,9 +50,9 @@ export async function deleteFileFromStorage(url: string) {
       throw new Error('Invalid file URL format');
     }
     const filePath = urlParts[1];
-    
+
     console.log('🗑️ Deleting file:', { filePath });
-    
+
     const { error } = await supabaseAdmin.storage
       .from(BUCKET_NAME)
       .remove([filePath]);
@@ -70,10 +70,10 @@ export async function deleteFileFromStorage(url: string) {
 }
 
 export async function uploadFileToStorage(file: File | Blob, fileName?: string) {
-  console.log('📤 Starting file upload:', { 
+  console.log('📤 Starting file upload:', {
     type: file instanceof File ? 'File' : 'Blob',
     size: file.size,
-    providedFileName: fileName 
+    providedFileName: fileName
   });
 
   try {
@@ -83,7 +83,7 @@ export async function uploadFileToStorage(file: File | Blob, fileName?: string) 
     const filePath = `${FOLDER_NAME}/${uniqueFileName}`;
     const contentType = file instanceof File ? file.type : 'text/plain';
 
-    console.log('📁 Generated file path:', { 
+    console.log('📁 Generated file path:', {
       actualFileName,
       uniqueFileName,
       filePath,
@@ -113,16 +113,16 @@ export async function uploadFileToStorage(file: File | Blob, fileName?: string) 
 }
 
 export async function uploadTextToStorage(text: string, name: string) {
-  console.log('📝 Starting text upload:', { 
+  console.log('📝 Starting text upload:', {
     textLength: text.length,
-    name 
+    name
   });
 
   try {
     const blob = new Blob([text], { type: 'text/plain' });
-    console.log('📦 Created text blob:', { 
+    console.log('📦 Created text blob:', {
       size: blob.size,
-      type: blob.type 
+      type: blob.type
     });
 
     const result = await uploadFileToStorage(blob, name);
@@ -132,4 +132,47 @@ export async function uploadTextToStorage(text: string, name: string) {
     console.error('❌ Error in uploadTextToStorage:', error);
     throw error;
   }
+}
+
+export async function listFilesFromStorage() {
+  console.log('📂 Listing files from storage:', {
+    bucket: BUCKET_NAME,
+    folder: FOLDER_NAME
+  });
+
+  const { data, error } = await supabaseAdmin.storage
+    .from(BUCKET_NAME)
+    .list(FOLDER_NAME, {
+      limit: 100,
+      offset: 0,
+      sortBy: { column: 'created_at', order: 'desc' },
+    });
+
+  if (error) {
+    console.error('❌ Error listing files:', error);
+    throw error;
+  }
+
+  console.log(`✅ Found ${data.length} files`);
+
+  // Generate public URLs for all files
+  const filesWithUrls = await Promise.all(data.map(async (file) => {
+    const filePath = `${FOLDER_NAME}/${file.name}`;
+    const { data: { publicUrl } } = supabaseAdmin.storage
+      .from(BUCKET_NAME)
+      .getPublicUrl(filePath);
+
+    return {
+      name: file.name,
+      id: file.id,
+      updated_at: file.updated_at,
+      created_at: file.created_at,
+      last_accessed_at: file.last_accessed_at,
+      metadata: file.metadata,
+      url: publicUrl,
+      size: file.metadata?.size || 0
+    };
+  }));
+
+  return filesWithUrls;
 }

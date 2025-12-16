@@ -17,6 +17,7 @@ export interface CreateAgentRequest {
   temperature?: number;
   first_speaker?: "FIRST_SPEAKER_USER" | "FIRST_SPEAKER_AGENT";
   selected_tools?: string[];
+  selected_webhooks?: string[];
   call_transfer_number?: string;
 }
 
@@ -31,6 +32,7 @@ export interface UpdateAgentRequest {
   temperature?: number;
   first_speaker?: "FIRST_SPEAKER_USER" | "FIRST_SPEAKER_AGENT";
   selected_tools?: string[];
+  selected_webhooks?: string[];
   knowledge_base_id?: string;
   is_appointment_booking_allowed?: boolean;
   appointment_tool_id?: string;
@@ -51,6 +53,7 @@ export interface AgentResponse {
   temperature: number;
   first_speaker: string;
   selected_tools?: string[];
+  selected_webhooks?: string[];
   call_transfer_number?: string;
   ultravox_agent_id?: string;
   ultravox_published_revision_id?: string;

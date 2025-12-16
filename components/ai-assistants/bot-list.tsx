@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icons';
@@ -30,6 +31,7 @@ import { useBots } from '@/hooks/use-bots';
 
 
 export function BotList() {
+  const router = useRouter();
   const { toast } = useToast();
   const [duplicatingBotId, setDuplicatingBotId] = useState<string | null>(null);
 
@@ -37,6 +39,8 @@ export function BotList() {
 
   const handleBotSelect = (botId: string) => {
     setSelectedBotId(botId);
+    // Update URL with botId query parameter
+    router.push(`/dashboard/aiassistant?botId=${botId}`, { scroll: false });
   };
 
   const handleDeleteBot = async (botId: string) => {
@@ -135,8 +139,8 @@ export function BotList() {
             <div
               key={bot.id}
               className={`group relative p-2 rounded-xl border transition-all duration-200 ${isSelected
-                  ? 'bg-primary/10 border-primary/20 shadow-sm'
-                  : 'bg-card border-border hover:border-border/80 hover:shadow-sm'
+                ? 'bg-primary/10 border-primary/20 shadow-sm'
+                : 'bg-card border-border hover:border-border/80 hover:shadow-sm'
                 } ${bot.is_enabled === false ? 'opacity-40' : ''}`}
             >
               <div className="flex items-start justify-between gap-2">
@@ -173,15 +177,6 @@ export function BotList() {
 
                 {/* Actions Menu */}
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {/* Toggle Switch */}
-                  <div onClick={(e) => e.stopPropagation()}>
-                    <Switch
-                      checked={bot.is_enabled !== false}
-                      onCheckedChange={(value) => handleToggleEnabled(bot.id, value)}
-                      className="data-[state=checked]:bg-green-500"
-                    />
-                  </div>
-
                   <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -195,6 +190,25 @@ export function BotList() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                          }}
+                          className="flex items-center justify-between gap-2"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Icon name={bot.is_enabled !== false ? "power" : "powerOff"} className="h-4 w-4" />
+                            {bot.is_enabled !== false ? "Disable Bot" : "Enable Bot"}
+                          </div>
+                          <Switch
+                            checked={bot.is_enabled !== false}
+                            onCheckedChange={(value) => handleToggleEnabled(bot.id, value)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="data-[state=checked]:bg-green-500"
+                          />
+                        </DropdownMenuItem>
+
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={(e) => {
                             e.stopPropagation();

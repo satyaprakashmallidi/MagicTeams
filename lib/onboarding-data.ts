@@ -1,0 +1,253 @@
+import type { Template, VoiceOption, LeadGenStrategy } from './onboarding';
+
+export const MOCK_VOICES: VoiceOption[] = [
+    {
+        id: 'voice-1',
+        name: 'Sarah Anderson',
+        gender: 'female',
+        accent: 'American',
+        description: 'Professional and warm, perfect for customer service',
+    },
+    {
+        id: 'voice-2',
+        name: 'Michael Chen',
+        gender: 'male',
+        accent: 'British',
+        description: 'Clear and authoritative, ideal for sales',
+    },
+    {
+        id: 'voice-3',
+        name: 'Emma Rodriguez',
+        gender: 'female',
+        accent: 'Spanish',
+        description: 'Friendly and engaging, great for support',
+    },
+    {
+        id: 'voice-4',
+        name: 'James Wilson',
+        gender: 'male',
+        accent: 'Australian',
+        description: 'Energetic and approachable, perfect for outreach',
+    },
+];
+
+export const LEAD_GEN_STRATEGIES: Array<{
+    id: LeadGenStrategy;
+    name: string;
+    description: string;
+    icon: string;
+}> = [
+        {
+            id: 'real-estate',
+            name: 'Real Estate',
+            description: 'Property inquiries, viewings, and follow-ups',
+            icon: '🏠',
+        },
+        {
+            id: 'insurance',
+            name: 'Insurance',
+            description: 'Policy quotes, renewals, and claims',
+            icon: '🛡️',
+        },
+        {
+            id: 'ecommerce',
+            name: 'E-commerce',
+            description: 'Product recommendations and order support',
+            icon: '🛒',
+        },
+        {
+            id: 'education',
+            name: 'Education',
+            description: 'Course enrollment and student support',
+            icon: '🎓',
+        },
+        {
+            id: 'healthcare',
+            name: 'Healthcare',
+            description: 'Appointment scheduling and reminders',
+            icon: '⚕️',
+        },
+        {
+            id: 'finance',
+            name: 'Finance',
+            description: 'Account inquiries and financial advice',
+            icon: '💰',
+        },
+    ];
+
+export const TEMPLATES: { [key in LeadGenStrategy]: Template[] } = {
+    'real-estate': [
+        {
+            id: 'real-estate-1',
+            name: 'Property Inquiry Agent',
+            description: 'Handles property questions and schedules viewings',
+            icon: '🏘️',
+            category: 'real-estate',
+            prompt: 'You are a helpful real estate assistant...',
+            defaultGreeting: 'Hi! I can help you find your dream property.',
+        },
+        {
+            id: 'real-estate-2',
+            name: 'Listing Follow-up Agent',
+            description: 'Follows up with potential buyers after viewings',
+            icon: '📋',
+            category: 'real-estate',
+            prompt: 'You are a follow-up specialist for real estate...',
+            defaultGreeting: 'Thanks for viewing the property! Any questions?',
+        },
+        {
+            id: 'real-estate-3',
+            name: 'Open House Scheduler',
+            description: 'Schedules open house appointments',
+            icon: '📅',
+            category: 'real-estate',
+            prompt: 'You help schedule open house visits...',
+            defaultGreeting: 'Would you like to schedule an open house visit?',
+        },
+    ],
+    insurance: [
+        {
+            id: 'insurance-1',
+            name: 'Quote Generator Agent',
+            description: 'Provides insurance quotes based on customer needs',
+            icon: '📊',
+            category: 'insurance',
+            prompt: 'You are an insurance quote specialist...',
+            defaultGreeting: 'Hi! Let me help you find the perfect coverage.',
+        },
+        {
+            id: 'insurance-2',
+            name: 'Renewal Reminder Agent',
+            description: 'Reminds customers about policy renewals',
+            icon: '🔔',
+            category: 'insurance',
+            prompt: 'You handle policy renewal reminders...',
+            defaultGreeting: 'Your policy is up for renewal soon!',
+        },
+        {
+            id: 'insurance-3',
+            name: 'Claims Support Agent',
+            description: 'Assists with insurance claim processes',
+            icon: '📝',
+            category: 'insurance',
+            prompt: 'You assist customers with filing claims...',
+            defaultGreeting: 'I can help you file a claim today.',
+        },
+    ],
+    ecommerce: [
+        {
+            id: 'ecommerce-1',
+            name: 'Product Recommender',
+            description: 'Recommends products based on preferences',
+            icon: '✨',
+            category: 'ecommerce',
+            prompt: 'You are a product recommendation expert...',
+            defaultGreeting: 'Looking for something special? I can help!',
+        },
+        {
+            id: 'ecommerce-2',
+            name: 'Order Tracking Agent',
+            description: 'Helps customers track their orders',
+            icon: '📦',
+            category: 'ecommerce',
+            prompt: 'You help customers track their packages...',
+            defaultGreeting: 'Need to check your order status?',
+        },
+        {
+            id: 'ecommerce-3',
+            name: 'Cart Recovery Agent',
+            description: 'Follows up on abandoned shopping carts',
+            icon: '🛍️',
+            category: 'ecommerce',
+            prompt: 'You help recover abandoned carts...',
+            defaultGreeting: 'You left something in your cart!',
+        },
+    ],
+    education: [
+        {
+            id: 'education-1',
+            name: 'Enrollment Assistant',
+            description: 'Helps with course enrollment process',
+            icon: '📚',
+            category: 'education',
+            prompt: 'You assist with course enrollment...',
+            defaultGreeting: 'Ready to start your learning journey?',
+        },
+        {
+            id: 'education-2',
+            name: 'Student Support Agent',
+            description: 'Provides general student support',
+            icon: '🎯',
+            category: 'education',
+            prompt: 'You provide student support services...',
+            defaultGreeting: 'How can I support your studies today?',
+        },
+        {
+            id: 'education-3',
+            name: 'Class Reminder Agent',
+            description: 'Sends class and assignment reminders',
+            icon: '⏰',
+            category: 'education',
+            prompt: 'You send class reminders to students...',
+            defaultGreeting: 'Reminder: You have an upcoming class!',
+        },
+    ],
+    healthcare: [
+        {
+            id: 'healthcare-1',
+            name: 'Appointment Scheduler',
+            description: 'Books medical appointments',
+            icon: '🩺',
+            category: 'healthcare',
+            prompt: 'You schedule medical appointments...',
+            defaultGreeting: 'Let me help you book an appointment.',
+        },
+        {
+            id: 'healthcare-2',
+            name: 'Prescription Reminder',
+            description: 'Reminds patients about prescriptions',
+            icon: '💊',
+            category: 'healthcare',
+            prompt: 'You remind patients about medications...',
+            defaultGreeting: 'Time for your medication reminder!',
+        },
+        {
+            id: 'healthcare-3',
+            name: 'Health Check-in Agent',
+            description: 'Conducts routine health check-ins',
+            icon: '❤️',
+            category: 'healthcare',
+            prompt: 'You conduct health wellness checks...',
+            defaultGreeting: 'How are you feeling today?',
+        },
+    ],
+    finance: [
+        {
+            id: 'finance-1',
+            name: 'Account Balance Agent',
+            description: 'Provides account balance information',
+            icon: '💳',
+            category: 'finance',
+            prompt: 'You provide account information...',
+            defaultGreeting: 'Need to check your account balance?',
+        },
+        {
+            id: 'finance-2',
+            name: 'Payment Reminder Agent',
+            description: 'Sends payment due reminders',
+            icon: '💸',
+            category: 'finance',
+            prompt: 'You send payment reminders...',
+            defaultGreeting: 'You have an upcoming payment due.',
+        },
+        {
+            id: 'finance-3',
+            name: 'Financial Advisor Agent',
+            description: 'Provides basic financial guidance',
+            icon: '📈',
+            category: 'finance',
+            prompt: 'You provide financial advice...',
+            defaultGreeting: 'Let me help with your financial goals.',
+        },
+    ],
+};
