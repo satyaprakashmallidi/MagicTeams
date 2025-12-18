@@ -1,0 +1,48 @@
+
+Testing AI Studio (User Model)...
+URL: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=AQ.Ab8RN6KCEoHUjUw6SAH9Eo8L9bwO8ozweSE8Cf0ivmyEcPMuDw
+Status: 401 Unauthorized
+Error: {
+  "error": {
+    "code": 401,
+    "message": "API keys are not supported by this API. Expected OAuth2 access token or other authentication credentials that assert a principal. See https://cloud.goog...
+
+Testing AI Studio (Standard Model)...
+URL: https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AQ.Ab8RN6KCEoHUjUw6SAH9Eo8L9bwO8ozweSE8Cf0ivmyEcPMuDw
+Status: 401 Unauthorized
+Error: {
+  "error": {
+    "code": 401,
+    "message": "API keys are not supported by this API. Expected OAuth2 access token or other authentication credentials that assert a principal. See https://cloud.goog...
+
+Testing AI Studio (2.0 Flash)...
+URL: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=AQ.Ab8RN6KCEoHUjUw6SAH9Eo8L9bwO8ozweSE8Cf0ivmyEcPMuDw
+Status: 401 Unauthorized
+Error: {
+  "error": {
+    "code": 401,
+    "message": "API keys are not supported by this API. Expected OAuth2 access token or other authentication credentials that assert a principal. See https://cloud.goog...
+
+Testing AI Studio (User Model)...
+URL: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=AQ.Ab8RN6KCEoHUjUw6SAH9Eo8L9bwO8ozweSE8Cf0ivmyEcPMuDw
+Status: 401 Unauthorized
+Error: {
+  "error": {
+    "code": 401,
+    "message": "API keys are not supported by this API. Expected OAuth2 access token or other authentication credentials that assert a principal. See https://cloud.goog...
+
+Testing AI Studio (Standard Model)...
+URL: https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AQ.Ab8RN6KCEoHUjUw6SAH9Eo8L9bwO8ozweSE8Cf0ivmyEcPMuDw
+Status: 401 Unauthorized
+Error: {
+  "error": {
+    "code": 401,
+    "message": "API keys are not supported by this API. Expected OAuth2 access token or other authentication credentials that assert a principal. See https://cloud.goog...
+
+Testing AI Studio (2.0 Flash)...
+URL: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=AQ.Ab8RN6KCEoHUjUw6SAH9Eo8L9bwO8ozweSE8Cf0ivmyEcPMuDw
+Status: 401 Unauthorized
+Error: {
+  "error": {
+    "code": 401,
+    "message": "API keys are not supported by this API. Expected OAuth2 access token or other authentication credentials that assert a principal. See https://cloud.goog...

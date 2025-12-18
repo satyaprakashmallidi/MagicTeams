@@ -14,14 +14,14 @@ export async function enhancePromptWithAI(
         const apiKey = process.env.GOOGLE_VERTEX_API_KEY;
         const project = "peppy-citron-480805-h9";
         const location = "us-central1";
-        const model = "gemini-live-2.5-flash-preview-native-audio-09-2025";
+        const model = "gemini-2.5-flash-lite";
 
         if (!apiKey) {
             throw new Error('Google Vertex API key not configured');
         }
 
         // Vertex AI Endpoint
-        const endpoint = `https://${location}-aiplatform.googleapis.com/v1/projects/${project}/locations/${location}/publishers/google/models/${model}:generateContent?key=${apiKey}`;
+        const endpoint = `https://aiplatform.googleapis.com/v1/publishers/google/models/${model}:generateContent?key=${apiKey}`;
 
         // Create the prompt for Gemini
         const systemPrompt = `You are an expert at creating system prompts for AI voice agents. 

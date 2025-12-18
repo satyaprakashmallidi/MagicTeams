@@ -1,4 +1,4 @@
-export  interface CalendarAccount {
+export interface CalendarAccount {
   id: string;
   user_id: string;
   access_token: string;
@@ -413,7 +413,7 @@ export interface CalComUserInfo {
 
 export interface CalComEventType {
   id: number;
-  eventId: number; 
+  eventId: number;
   ownerId: number;
   lengthInMinutes: number;
   title: string;

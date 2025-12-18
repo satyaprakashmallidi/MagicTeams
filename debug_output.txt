@@ -1,0 +1,196 @@
+
+--- Testing Vertex generateContent ---
+URL: https://us-central1-aiplatform.googleapis.com/v1/projects/peppy-citron-480805-h9/locations/us-central1/publishers/google/models/gemini-2.5-flash-lite:generateContent?key=AQ.Ab8RN6KCEoHUjUw6SAH9Eo8L9bwO8ozweSE8Cf0ivmyEcPMuDw
+Status: 200 OK
+SUCCESS!
+Response: {
+  "candidates": [
+    {
+      "content": {
+        "role": "model",
+        "parts": [
+          {
+            "text": "Hello! How can I help you today?"
+          }
+        ]
+      },
+      "finishReason": "STOP",
+      "avgLogprobs": -0.05498706301053365
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 3,
+    "candidatesTokenCount": 9,
+    "totalTokenCount": 12,
+    "trafficType": "ON_DEMAND",
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 3
+      }
+    ],
+    "candidatesTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 9
+      }
+    ]
+  },
+  "modelVersion": "gemini-2.5-flash-lite",
+  "createTime": "2025-12-17T08:51:30.798640Z",
+  "responseId": "Em9CabDfMJ3dnvgPw-evsQU"
+}
+
+--- Testing Vertex streamGenerateContent ---
+URL: https://us-central1-aiplatform.googleapis.com/v1/projects/peppy-citron-480805-h9/locations/us-central1/publishers/google/models/gemini-2.5-flash-lite:streamGenerateContent?key=AQ.Ab8RN6KCEoHUjUw6SAH9Eo8L9bwO8ozweSE8Cf0ivmyEcPMuDw
+Status: 200 OK
+SUCCESS!
+(Stream response received)
+
+--- Testing Global AI Platform ---
+URL: https://aiplatform.googleapis.com/v1/projects/peppy-citron-480805-h9/locations/us-central1/publishers/google/models/gemini-2.5-flash-lite:generateContent?key=AQ.Ab8RN6KCEoHUjUw6SAH9Eo8L9bwO8ozweSE8Cf0ivmyEcPMuDw
+Status: 200 OK
+SUCCESS!
+Response: {
+  "candidates": [
+    {
+      "content": {
+        "role": "model",
+        "parts": [
+          {
+            "text": "Hello!"
+          }
+        ]
+      },
+      "finishReason": "STOP",
+      "avgLogprobs": -0.029516752809286118
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 3,
+    "candidatesTokenCount": 2,
+    "totalTokenCount": 5,
+    "trafficType": "ON_DEMAND",
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 3
+      }
+    ],
+    "candidatesTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 2
+      }
+    ]
+  },
+  "modelVersion": "gemini-2.5-flash-lite",
+  "createTime": "2025-12-17T08:51:32.852814Z",
+  "responseId": "FG9Cac6GNJqgseMPpsTM4Aw"
+}
+
+--- Testing Generative Language API ---
+URL: https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AQ.Ab8RN6KCEoHUjUw6SAH9Eo8L9bwO8ozweSE8Cf0ivmyEcPMuDw
+Status: 401 Unauthorized
+Error Body: {
+  "error": {
+    "code": 401,
+    "message": "API keys are not supported by this API. Expected OAuth2 access token or other authentication credentials that assert a principal. See https://cloud.google.com/docs/authentication",
+    "status": "UNAUTHENTICATED",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "CREDENTIALS_MISSING",
+        "domain": "googleapis.com",
+        "metadata": {
+          "service": "generativelanguage.googleapis.com",
+          "method": "google.ai.generativelanguage.v1beta.GenerativeService.GenerateContent"
+        }
+      }
+    ]
+  }
+}
+
+
+--- Testing Working Curl Endpoint ---
+URL: https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-2.5-flash-lite:streamGenerateContent?key=AQ.Ab8RN6KCEoHUjUw6SAH9Eo8L9bwO8ozweSE8Cf0ivmyEcPMuDw
+Status: 200 OK
+SUCCESS!
+Response: [
+  {
+    "candidates": [
+      {
+        "content": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "Hello"
+            }
+          ]
+        }
+      }
+    ],
+    "usageMetadata": {
+      "trafficType": "ON_DEMAND"
+    },
+    "modelVersion": "gemini-2.5-flash-lite",
+    "createTime": "2025-12-17T08:51:44.660951Z",
+    "responseId": "IG9CaderKJ3v7bEPl9vRsQs"
+  },
+  {
+    "candidates": [
+      {
+        "content": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "!"
+            }
+          ]
+        }
+      }
+    ],
+    "usageMetadata": {
+      "trafficType": "ON_DEMAND"
+    },
+    "modelVersion": "gemini-2.5-flash-lite",
+    "createTime": "2025-12-17T08:51:44.660951Z",
+    "responseId": "IG9CaderKJ3v7bEPl9vRsQs"
+  },
+  {
+    "candidates": [
+      {
+        "content": {
+          "role": "model",
+          "parts": [
+            {
+              "text": ""
+            }
+          ]
+        },
+        "finishReason": "STOP"
+      }
+    ],
+    "usageMetadata": {
+      "promptTokenCount": 3,
+      "candidatesTokenCount": 2,
+      "totalTokenCount": 5,
+      "trafficType": "ON_DEMAND",
+      "promptTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 3
+        }
+      ],
+      "candidatesTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 2
+        }
+      ]
+    },
+    "modelVersion": "gemini-2.5-flash-lite",
+    "createTime": "2025-12-17T08:51:44.660951Z",
+    "responseId": "IG9CaderKJ3v7bEPl9vRsQs"
+  }
+]

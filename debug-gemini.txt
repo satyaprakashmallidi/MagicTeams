@@ -1,0 +1,21 @@
+Testing Gemini 2.5 Flash Lite with fetch...
+Sending request to https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-2.5-flash-lite:streamGenerateContent?key=AQ.Ab8RN6KCEoHUjUw6SAH9Eo8L9bwO8ozweSE8Cf0ivmyEcPMuDw
+Response Status: 401 Unauthorized
+FAILED: API request failed: 401 - [{
+  "error": {
+    "code": 401,
+    "message": "Request had invalid authentication credentials. Expected OAuth 2 access token, login cookie or other valid authentication credential. See https://developers.google.com/identity/sign-in/web/devconsole-project.",
+    "status": "UNAUTHENTICATED",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "ACCESS_TOKEN_TYPE_UNSUPPORTED",
+        "metadata": {
+          "service": "aiplatform.googleapis.com",
+          "method": "google.cloud.aiplatform.v1.PredictionService.StreamGenerateContent"
+        }
+      }
+    ]
+  }
+}
+]

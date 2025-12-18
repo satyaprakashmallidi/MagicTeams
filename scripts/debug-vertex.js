@@ -1,6 +1,6 @@
 const https = require('https');
 
-const API_KEY = "AQ.Ab8RN6JCdtKHYmhEjHDy7xIrQJUKOSNfz5VjRq5x8Wba_JyPAQ";
+const API_KEY = "AQ.Ab8RN6KCEoHUjUw6SAH9Eo8L9bwO8ozweSE8Cf0ivmyEcPMuDw";
 const PROJECT = "peppy-citron-480805-h9";
 const LOCATION = "us-central1";
 const MODEL = "gemini-live-2.5-flash-preview-native-audio-09-2025";

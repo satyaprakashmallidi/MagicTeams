@@ -14,14 +14,14 @@ async function createCall(
     console.log(`- From: ${from}`);
     console.log(`- To: ${phoneNumber}`);
     console.log(`- Join URL length: ${joinUrl.length} characters`);
-    
+
     const twilioEndpoint = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Calls.json`;
     console.log(`- Twilio API endpoint: ${twilioEndpoint}`);
-    
+
     const authorization = Buffer.from(
       `${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`
     ).toString("base64");
-    
+
     const twilioResponse = await fetch(
       twilioEndpoint,
       {
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
     if (!fromNumber.startsWith('+')) {
       console.warn("Warning: fromNumber may not be in E.164 format (should start with +):", fromNumber);
     }
-    
+
     if (!to.startsWith('+')) {
       console.warn("Warning: to number may not be in E.164 format (should start with +):", to);
     }
