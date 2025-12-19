@@ -1305,43 +1305,26 @@ export function BotDetails() {
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <div className="p-4 pt-0 space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="voice">Voice</Label>
-                          <Select
-                            onValueChange={(value) => setValue("voice", value)}
-                            value={selectedVoice}
-                          >
-                            <SelectTrigger disabled={voicesLoading}>
-                              <SelectValue placeholder={voicesLoading ? "Loading voices..." : "Select a voice"} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {voices.map((voice) => (
-                                <SelectItem key={voice.voiceId} value={voice.voiceId}>
-                                  {voice.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          {errors.voice && (
-                            <p className="text-sm text-red-500">{errors.voice.message}</p>
-                          )}
-                        </div>
-
-                        <div>
-                          <Label htmlFor="model">Model</Label>
-                          <Select
-                            value="ultravox-v0.7"
-                            disabled
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="ultravox-v0.7">Ultravox v0.7</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
+                      <div>
+                        <Label htmlFor="voice">Voice</Label>
+                        <Select
+                          onValueChange={(value) => setValue("voice", value)}
+                          value={selectedVoice}
+                        >
+                          <SelectTrigger disabled={voicesLoading}>
+                            <SelectValue placeholder={voicesLoading ? "Loading voices..." : "Select a voice"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {voices.map((voice) => (
+                              <SelectItem key={voice.voiceId} value={voice.voiceId}>
+                                {voice.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {errors.voice && (
+                          <p className="text-sm text-red-500">{errors.voice.message}</p>
+                        )}
                       </div>
 
                       <div className="space-y-2">
