@@ -11,16 +11,17 @@ export async function enhancePromptWithAI(
     strategy: string
 ): Promise<{ success: boolean; enhancedPrompt?: string; error?: string }> {
     try {
-        const apiKey = process.env.GEMINI_API_KEY;
+        const apiKey = process.env.GOOGLE_VERTEX_API_KEY;
+        const project = "peppy-citron-480805-h9";
+        const location = "us-central1";
+        const model = "gemini-2.5-flash-lite";
 
         if (!apiKey) {
-            throw new Error('Gemini API key not configured');
+            throw new Error('Google Vertex API key not configured');
         }
 
-        // Google AI Studio endpoint - using /v1/models/ with API key in query string
-        // Model: gemini-1.5-flash (no -latest suffix for /v1/ endpoint)
-        console.log("HELLLLLOOOO",apiKey);
-        const endpoint = `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+        // Vertex AI Endpoint
+        const endpoint = `https://aiplatform.googleapis.com/v1/publishers/google/models/${model}:generateContent?key=${apiKey}`;
 
         // Create the prompt for Gemini
         const systemPrompt = `You are an expert at creating system prompts for AI voice agents. 
@@ -42,10 +43,12 @@ Generate ONLY the system prompt, without any additional explanation or formattin
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                // 'x-goog-user-project': project // Optional, but good practice if needed
             },
             body: JSON.stringify({
                 contents: [
                     {
+                        role: "user",
                         parts: [
                             {
                                 text: systemPrompt,
@@ -64,8 +67,8 @@ Generate ONLY the system prompt, without any additional explanation or formattin
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('Google AI API error:', errorText);
-            throw new Error(`API request failed: ${response.status}`);
+            console.error('Google Vertex AI API error:', errorText);
+            throw new Error(`API request failed: ${response.status} - ${errorText}`);
         }
 
         const data = await response.json();

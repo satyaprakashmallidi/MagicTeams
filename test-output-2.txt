@@ -1,0 +1,21 @@
+Testing Google Vertex AI integration...
+API Key found (length): 53
+
+FAILED: API request failed: 401 - {
+  "error": {
+    "code": 401,
+    "message": "The bound service account is deleted or disabled. The service account bound to the API key must be active.",
+    "status": "UNAUTHENTICATED",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "ACCOUNT_STATE_INVALID",
+        "metadata": {
+          "method": "google.cloud.aiplatform.v1.PredictionService.GenerateContent",
+          "service": "aiplatform.googleapis.com"
+        }
+      }
+    ]
+  }
+}
+
