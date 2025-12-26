@@ -15,8 +15,6 @@ export const dashboardNav: NavItem[] = [
   {
     title: 'GHL-Calendar',
     href: '/dashboard/ghl-calendar',
-
-
   },
   {
     title: 'Data Import',

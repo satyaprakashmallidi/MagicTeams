@@ -130,7 +130,7 @@ export function BotList() {
   return (
     <TooltipProvider>
       <div className="space-y-2">
-        {bots.map((bot) => {
+        {Array.isArray(bots) && bots.map((bot) => {
           if (bot.is_deleted) return null;
           const isSelected = selectedBotId === bot.id;
           const isDuplicating = duplicatingBotId === bot.id;
@@ -275,7 +275,7 @@ export function BotList() {
           );
         })}
 
-        {bots.filter(bot => !bot.is_deleted).length === 0 && (
+        {(!Array.isArray(bots) || bots.filter(bot => !bot.is_deleted).length === 0) && (
           <div className="text-center py-12">
             <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
               <Icon name="bot" className="h-8 w-8 text-muted-foreground" />
