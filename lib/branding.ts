@@ -6,7 +6,7 @@ export async function getAgencyBranding(agencyId: string): Promise<AgencyBrandin
     const whitelabelSupabase = await createWhitelabelAdminClient()
     const { data: agencyData, error } = await whitelabelSupabase
       .from('agencies')
-      .select('id, agency_name, logo_url, custom_domain')
+      .select('id, agency_name, logo_url, custom_domain, theme_id, website_title')
       .eq('id', agencyId)
       .single()
 
@@ -18,7 +18,9 @@ export async function getAgencyBranding(agencyId: string): Promise<AgencyBrandin
       id: agencyData.id,
       agency_name: agencyData.agency_name,
       logo_url: agencyData.logo_url,
-      custom_domain: agencyData.custom_domain
+      custom_domain: agencyData.custom_domain,
+      theme_id: agencyData.theme_id,
+      website_title: agencyData.website_title
     }
   } catch (error) {
     console.error('Error fetching agency branding:', error)
@@ -33,7 +35,7 @@ export async function getAgencyBrandingByDomain(domain: string): Promise<AgencyB
       .from('agency_domain')
       .select(`
         *,
-        agencies!inner(id, agency_name, logo_url, custom_domain)
+        agencies!inner(id, agency_name, logo_url, custom_domain, theme_id, website_title)
       `)
       .eq('domain', domain.toLowerCase().replace(/^www\./, ''))
       .eq('verification_status', 'verified')
@@ -47,7 +49,9 @@ export async function getAgencyBrandingByDomain(domain: string): Promise<AgencyB
       id: domainRecord.agencies.id,
       agency_name: domainRecord.agencies.agency_name,
       logo_url: domainRecord.agencies.logo_url,
-      custom_domain: domainRecord.agencies.custom_domain
+      custom_domain: domainRecord.agencies.custom_domain,
+      theme_id: domainRecord.agencies.theme_id,
+      website_title: domainRecord.agencies.website_title
     }
   } catch (error) {
     console.error('Error fetching agency branding by domain:', error)

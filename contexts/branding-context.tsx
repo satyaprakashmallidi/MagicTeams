@@ -7,6 +7,8 @@ export interface AgencyBranding {
   agency_name: string
   logo_url?: string | null
   custom_domain?: string | null
+  theme_id?: string | null
+  website_title?: string | null
 }
 
 interface BrandingContextType {
@@ -17,9 +19,9 @@ interface BrandingContextType {
 
 const BrandingContext = createContext<BrandingContextType | undefined>(undefined)
 
-export function BrandingProvider({ children, initialBranding }: { 
+export function BrandingProvider({ children, initialBranding }: {
   children: ReactNode
-  initialBranding?: AgencyBranding | null 
+  initialBranding?: AgencyBranding | null
 }) {
   const [branding, setBrandingState] = useState<AgencyBranding | null>(initialBranding || null)
   const [isLoading, setIsLoading] = useState(false)

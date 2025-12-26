@@ -62,10 +62,24 @@ export function Sidebar() {
   const [pinnedItems, setPinnedItems] = useState<string[]>([]);
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
 
+  // Cached agency name for instant display
+  const [cachedAgencyName, setCachedAgencyName] = useState<string | null>(null);
+  const [isLoadingAgencyName, setIsLoadingAgencyName] = useState(true);
+
+  // Load cache on mount to avoid hydration mismatch
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem('agency-name-cache');
+      if (cached) {
+        setCachedAgencyName(cached);
+        setIsLoadingAgencyName(false);
+      }
+    }
+  }, []);
+
   // Use layout context if available, fallback to local state (Liskov Substitution Principle)
   let collapsed: boolean;
   let setCollapsed: (collapsed: boolean) => void;
-
   try {
     const layoutSidebar = useSidebar();
     collapsed = layoutSidebar.sidebarCollapsed;
@@ -84,16 +98,36 @@ export function Sidebar() {
     }
   }, []);
 
-  // Get agency name from branding context or fallback to user metadata
-  const getAgencyName = () => {
+  // Cache agency name when branding or user loads
+  useEffect(() => {
+    if (branding?.agency_name) {
+      setCachedAgencyName(branding.agency_name);
+      localStorage.setItem('agency-name-cache', branding.agency_name);
+      setIsLoadingAgencyName(false);
+    } else if (user?.user_metadata?.agency_name) {
+      setCachedAgencyName(user.user_metadata.agency_name);
+      localStorage.setItem('agency-name-cache', user.user_metadata.agency_name);
+      setIsLoadingAgencyName(false);
+    } else if (user !== undefined && branding === null) {
+      // User loaded but no agency - show Magic Teams
+      setIsLoadingAgencyName(false);
+    }
+  }, [branding?.agency_name, user]);
+
+  // Get agency name from cache, branding, or user metadata
+  const getAgencyName = (): string | null => {
+    if (cachedAgencyName) {
+      return cachedAgencyName;
+    }
     if (branding?.agency_name) {
       return branding.agency_name;
     }
-    if (user) {
-      const metadata = user.user_metadata;
-      if (metadata && metadata.agency_name) {
-        return metadata.agency_name;
-      }
+    if (user?.user_metadata?.agency_name) {
+      return user.user_metadata.agency_name;
+    }
+    // If still loading, return null to show skeleton
+    if (isLoadingAgencyName) {
+      return null;
     }
     return "MAGIC TEAMS";
   };
@@ -333,7 +367,11 @@ export function Sidebar() {
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
           {!collapsed && (
-            <h2 className="text-xl font-bold text-primary">{getAgencyName().toLocaleUpperCase()}</h2>
+            getAgencyName() === null ? (
+              <div className="h-7 w-32 bg-muted animate-pulse rounded" />
+            ) : (
+              <h2 className="text-xl font-bold text-primary">{getAgencyName()!.toLocaleUpperCase()}</h2>
+            )
           )}
           <Tooltip>
             <TooltipTrigger asChild>
