@@ -664,7 +664,7 @@ export class CallService {
       return "error";
     }
   }
-
+// this is for twilio call
   async startTwilioCall(
     twilioConfig: TwilioConfig,
     callConfig: CallConfig,

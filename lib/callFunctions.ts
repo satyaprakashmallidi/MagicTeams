@@ -8,6 +8,7 @@ import { logAPICall, logCallOperation } from "./utils/api-logger";
 let ultravoxSession: UltravoxSession | null = null;
 const debugMessages: Set<string> = new Set(["debug"]);
 
+// this is for browser calls
 export async function startCall(
   callConfig: CallConfig,
   statusCallback: (status: string | undefined) => void,
