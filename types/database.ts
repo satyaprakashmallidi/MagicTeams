@@ -29,10 +29,16 @@ export interface Bot {
   twilio_phone_number?: string;
   is_call_transfer_allowed: boolean;
   call_transfer_number?: string;
+  call_transfer_type?: 'coldTransfer' | 'warmTransfer';
   model: string;
   custom_questions?: CustomQuestion[];
   selected_tools?: string[];
   selected_webhooks?: string[];
   is_realtime_capture_enabled?: boolean;
   content: string;
+  first_speaker?: 'FIRST_SPEAKER_AGENT' | 'FIRST_SPEAKER_USER';
+  is_enabled?: boolean;
+  is_agent?: boolean;
+  ultravox_agent_id?: string;
+  knowledge_base_usage_guide?: string;
 }

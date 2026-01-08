@@ -76,6 +76,7 @@ const formSchema = z.object({
   appointment_tool_id: z.string().optional(),
   is_call_transfer_allowed: z.boolean().default(false),
   call_transfer_number: z.string().optional(),
+  call_transfer_type: z.enum(["coldTransfer", "warmTransfer"]).default("coldTransfer"),
   knowledge_base_usage_guide: z.string().optional(),
 });
 
@@ -404,6 +405,7 @@ export function BotDetails() {
     setValue("appointment_tool_id", bot.appointment_tool_id || undefined);
     setValue("is_call_transfer_allowed", bot.is_call_transfer_allowed || false);
     setValue("call_transfer_number", bot.call_transfer_number || '');
+    setValue("call_transfer_type", bot.call_transfer_type || 'coldTransfer');
     setValue("knowledge_base_usage_guide", bot.knowledge_base_usage_guide || '');
 
 
@@ -516,6 +518,7 @@ export function BotDetails() {
         appointment_tool_id: data.appointment_tool_id,
         is_call_transfer_allowed: data.is_call_transfer_allowed,
         call_transfer_number: data.call_transfer_number,
+        call_transfer_type: data.call_transfer_type,
         selected_tools: selectedTools,
         selected_webhooks: selectedWebhooks,
       });
@@ -535,6 +538,7 @@ export function BotDetails() {
         appointment_tool_id: data.appointment_tool_id,
         is_call_transfer_allowed: data.is_call_transfer_allowed,
         call_transfer_number: data.call_transfer_number,
+        call_transfer_type: data.call_transfer_type,
         selected_tools: selectedTools,
         selected_webhooks: selectedWebhooks,
         knowledge_base_usage_guide: data.knowledge_base_usage_guide,
@@ -1268,23 +1272,54 @@ export function BotDetails() {
                         </div>
 
                         {isCallTransferAllowed && (
-                          <div>
-                            <Label htmlFor="call_transfer_number">TRANSFER PHONE NUMBER</Label>
-                            <Controller
-                              name="call_transfer_number"
-                              control={control}
-                              render={({ field }) => (
-                                <Input
-                                  {...field}
-                                  id="call_transfer_number"
-                                  placeholder="+1234567890"
-                                  className="mt-1"
-                                />
-                              )}
-                            />
-                            <p className="text-sm text-muted-foreground mt-1">
-                              Enter number where calls should be transferred (include country code)
-                            </p>
+                          <div className="space-y-4">
+                            <div>
+                              <Label htmlFor="call_transfer_number">TRANSFER PHONE NUMBER</Label>
+                              <Controller
+                                name="call_transfer_number"
+                                control={control}
+                                render={({ field }) => (
+                                  <Input
+                                    {...field}
+                                    id="call_transfer_number"
+                                    placeholder="+1234567890"
+                                    className="mt-1"
+                                  />
+                                )}
+                              />
+                              <p className="text-sm text-muted-foreground mt-1">
+                                Enter number where calls should be transferred (include country code)
+                              </p>
+                            </div>
+
+                            <div>
+                              <Label htmlFor="call_transfer_type">TRANSFER TYPE</Label>
+                              <Controller
+                                name="call_transfer_type"
+                                control={control}
+                                render={({ field }) => (
+                                  <Select
+                                    value={field.value}
+                                    onValueChange={field.onChange}
+                                  >
+                                    <SelectTrigger className="mt-1">
+                                      <SelectValue placeholder="Select transfer type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="coldTransfer">
+                                        Cold Transfer (Immediate)
+                                      </SelectItem>
+                                      <SelectItem value="warmTransfer">
+                                        Warm Transfer (With Context)
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                )}
+                              />
+                              <p className="text-sm text-muted-foreground mt-1">
+                                Cold: Caller is transferred immediately. Warm: Agent briefs the human operator before connecting.
+                              </p>
+                            </div>
                           </div>
                         )}
                       </div>

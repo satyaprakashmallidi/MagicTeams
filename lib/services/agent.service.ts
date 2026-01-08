@@ -38,6 +38,7 @@ export interface UpdateAgentRequest {
   appointment_tool_id?: string;
   is_call_transfer_allowed?: boolean;
   call_transfer_number?: string;
+  call_transfer_type?: 'coldTransfer' | 'warmTransfer';
 }
 
 export interface SyncAgentRequest {
