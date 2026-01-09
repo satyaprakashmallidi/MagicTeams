@@ -1,5 +1,6 @@
 import { CreateKnowledgeBaseRequest, KnowledgeBase, KnowledgeBaseResponse } from '@/types/knowledge-base';
 import { getEnvVars } from './env/getEnvVars';
+import { apiFetch } from './utils/api-fetch';
 
 const API_BASE_URL = getEnvVars().NEXT_PUBLIC_BACKEND_URL_WORKER;
 
@@ -10,10 +11,9 @@ export async function createKnowledgeBase(request: CreateKnowledgeBaseRequest): 
     throw new Error('At least one URL is required');
   }
 
-  const response = await fetch(`${API_BASE_URL}/api/knowledgebase`, {
+  const response = await apiFetch(`${API_BASE_URL}/api/knowledgebase`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
       'X-User-ID': request.user_id || '',
     },
     body: JSON.stringify(request),
@@ -30,14 +30,10 @@ export async function getKnowledgeBases(userId: string): Promise<KnowledgeBase[]
   console.log('🔍 Fetching knowledge bases for user:', userId);
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/knowledgebase?userId=${userId}`, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    const response = await apiFetch(`${API_BASE_URL}/api/knowledgebase?userId=${userId}`);
 
     console.log('📥 Knowledge bases response:', response.status, response.statusText);
-    
+
     if (!response.ok) {
       if (response.status === 404) {
         console.log('ℹ️ No knowledge bases found');
@@ -50,7 +46,7 @@ export async function getKnowledgeBases(userId: string): Promise<KnowledgeBase[]
 
     const data: KnowledgeBaseResponse = await response.json();
     console.log('📚 Knowledge bases data:', data);
-    
+
     if (data.status === 'error') {
       throw new Error(data.message || 'Failed to fetch knowledge bases');
     }
@@ -65,10 +61,9 @@ export async function getKnowledgeBases(userId: string): Promise<KnowledgeBase[]
 export async function updateKnowledgeBase(id: string, request: Partial<KnowledgeBase> & { urls?: string[] }): Promise<void> {
   console.log('✏️ Updating knowledge base:', id, request);
 
-  const response = await fetch(`${API_BASE_URL}/api/knowledgebase/${id}`, {
+  const response = await apiFetch(`${API_BASE_URL}/api/knowledgebase/${id}`, {
     method: 'PATCH',
     headers: {
-      'Content-Type': 'application/json',
       'X-User-ID': request.user_id ?? '',
     },
     body: JSON.stringify({
@@ -90,11 +85,8 @@ export async function updateKnowledgeBase(id: string, request: Partial<Knowledge
 export async function deleteKnowledgeBase(id: string, userId: string): Promise<void> {
   console.log('🗑️ Deleting knowledge base:', id);
 
-  const response = await fetch(`${API_BASE_URL}/api/knowledgebase/${id}?userId=${userId}`, {
+  const response = await apiFetch(`${API_BASE_URL}/api/knowledgebase/${id}?userId=${userId}`, {
     method: 'DELETE',
-    headers: {
-      'Content-Type': 'application/json',
-    },
   });
 
   if (!response.ok) {
@@ -105,14 +97,10 @@ export async function deleteKnowledgeBase(id: string, userId: string): Promise<v
 }
 
 export async function getKnowledgeBaseById(id: string, userId: string): Promise<KnowledgeBase | undefined> {
-  console.log('🔍 Fetching knowledge base by ID:', id);
+  console.log('� Fetching knowledge base by ID:', id);
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/knowledgebase/${id}?userId=${userId}`, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    const response = await apiFetch(`${API_BASE_URL}/api/knowledgebase/${id}?userId=${userId}`);
 
     if (!response.ok) {
       const error = await response.json();
@@ -121,7 +109,7 @@ export async function getKnowledgeBaseById(id: string, userId: string): Promise<
     }
 
     const data = await response.json();
-    console.log('📚 Knowledge base data:', data);
+    console.log('�📚 Knowledge base data:', data);
 
     // Ensure data is structured correctly for our frontend
     if (data && typeof data === 'object') {

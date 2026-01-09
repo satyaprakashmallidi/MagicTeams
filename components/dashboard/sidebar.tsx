@@ -314,13 +314,13 @@ export function Sidebar() {
     {
       title: "Account",
       items: [
-        // ❌ COMMENTED OUT: Buy Minutes section hidden
-        // ...(!isAgencyUser ? [{
-        //   name: "Buy Minutes",
-        //   icon: "credit-card",
-        //   path: "/dashboard/buy-minutes",
-        //   active: pathname === "/dashboard/buy-minutes",
-        // }] : []),
+        // Pricing option - only for non-agency users
+        ...(!isAgencyUser ? [{
+          name: "Pricing",
+          icon: "credit-card",
+          path: "/dashboard/buy-minutes",
+          active: pathname === "/dashboard/buy-minutes",
+        }] : []),
         {
           name: "Settings",
           icon: "settings",

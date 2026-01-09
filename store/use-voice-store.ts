@@ -4,6 +4,7 @@ import { TwilioCredentials, TwilioPhoneNumber } from '@/types/twilio';
 import { supabase } from '@/lib/supabase';
 import { env } from '@/lib/env/getEnvVars';
 import { useAuthStore } from '@/hooks/use-auth';
+import { apiFetch } from '@/lib/utils/api-fetch';
 
 interface VoiceState {
   voices: Voice[];
@@ -63,7 +64,7 @@ export const useVoiceStore = create<VoiceStore>((set, get) => ({
     try {
       set({ isLoading: true, error: null });
 
-      const response = await fetch(env.NEXT_PUBLIC_BACKEND_URL_WORKER + '/api/voices');
+      const response = await apiFetch(env.NEXT_PUBLIC_BACKEND_URL_WORKER + '/api/voices');
       if (!response.ok) {
         throw new Error('Failed to fetch voices');
       }
@@ -71,7 +72,7 @@ export const useVoiceStore = create<VoiceStore>((set, get) => ({
       const data = await response.json();
       const voices = data.data;
 
-      set({ 
+      set({
         voices,
         lastFetched: now,
         error: null
@@ -80,9 +81,9 @@ export const useVoiceStore = create<VoiceStore>((set, get) => ({
       return voices;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch voices';
-      set({ 
+      set({
         error: errorMessage,
-        voices: [] 
+        voices: []
       });
       return undefined;
     } finally {
@@ -151,7 +152,7 @@ export const useVoiceStore = create<VoiceStore>((set, get) => ({
         })) || []
       }));
 
-      set({ 
+      set({
         twilioInfo: transformedData,
         twilioLastFetched: now,
         error: null
@@ -296,9 +297,9 @@ export const useVoiceStore = create<VoiceStore>((set, get) => ({
         twilioInfo: state.twilioInfo?.map(account =>
           account.id === accountId && account.phone_numbers
             ? {
-                ...account,
-                phone_numbers: [...account.phone_numbers, data]
-              }
+              ...account,
+              phone_numbers: [...account.phone_numbers, data]
+            }
             : account
         ) || null,
         twilioLastFetched: Date.now(),
