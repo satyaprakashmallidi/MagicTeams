@@ -4,6 +4,7 @@
  */
 
 import { getEnvVars } from "../env/getEnvVars";
+import { apiFetch } from "../utils/api-fetch";
 
 const env = getEnvVars();
 
@@ -33,11 +34,8 @@ class VoiceService {
         const endpoint = `${this.baseURL}/api/voices`;
 
         try {
-            const response = await fetch(endpoint, {
+            const response = await apiFetch(endpoint, {
                 method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                },
             });
 
             if (!response.ok) {

@@ -1305,82 +1305,41 @@ export function BotDetails() {
                               </p>
                             </div>
 
-                            {/* Conditional Input: Phone Number for Cold Transfer */}
-                            {watch("call_transfer_type") === "coldTransfer" && (
-                              <div>
-                                <Label htmlFor="call_transfer_number">TRANSFER PHONE NUMBER</Label>
-                                <Controller
-                                  name="call_transfer_number"
-                                  control={control}
-                                  rules={{
-                                    pattern: {
-                                      value: /^\+[1-9]\d{1,14}$/,
-                                      message: "Please enter a valid phone number in E.164 format (e.g., +15551234567)"
-                                    }
-                                  }}
-                                  render={({ field, fieldState }) => (
-                                    <>
-                                      <Input
-                                        {...field}
-                                        id="call_transfer_number"
-                                        placeholder="+15551234567"
-                                        className={`mt-1 ${fieldState.error ? 'border-red-500' : ''}`}
-                                      />
-                                      {fieldState.error && (
-                                        <p className="text-sm text-red-500 mt-1">
-                                          {fieldState.error.message}
-                                        </p>
-                                      )}
-                                    </>
-                                  )}
-                                />
-                                <p className="text-sm text-muted-foreground mt-1">
-                                  Enter phone number in E.164 format (include country code, e.g., +15551234567)
-                                </p>
-                              </div>
-                            )}
-
-                            {/* Conditional Input: SIP URI for Warm Transfer */}
-                            {watch("call_transfer_type") === "warmTransfer" && (
-                              <div>
-                                <Label htmlFor="call_transfer_sip_uri">TRANSFER SIP URI</Label>
-                                <Controller
-                                  name="call_transfer_sip_uri"
-                                  control={control}
-                                  rules={{
-                                    validate: (value) => {
-                                      if (!value) return true; // Optional field
-                                      if (!value.startsWith('sip:')) {
-                                        return "Warm transfer requires a SIP endpoint, not a phone number. URI must start with 'sip:'";
-                                      }
-                                      // Check if user accidentally entered a phone number
-                                      if (/^\+?\d+$/.test(value)) {
-                                        return "Warm transfer requires a SIP endpoint, not a phone number.";
-                                      }
-                                      return true;
-                                    }
-                                  }}
-                                  render={({ field, fieldState }) => (
-                                    <>
-                                      <Input
-                                        {...field}
-                                        id="call_transfer_sip_uri"
-                                        placeholder="sip:agent@your-domain.sip.twilio.com"
-                                        className={`mt-1 ${fieldState.error ? 'border-red-500' : ''}`}
-                                      />
-                                      {fieldState.error && (
-                                        <p className="text-sm text-red-500 mt-1">
-                                          {fieldState.error.message}
-                                        </p>
-                                      )}
-                                    </>
-                                  )}
-                                />
-                                <p className="text-sm text-muted-foreground mt-1">
-                                  Enter the SIP URI of the human agent (e.g., sip:agent@your-domain.sip.twilio.com)
-                                </p>
-                              </div>
-                            )}
+                            {/* Phone Number input - used for both Cold and Warm transfer */}
+                            <div>
+                              <Label htmlFor="call_transfer_number">TRANSFER PHONE NUMBER</Label>
+                              <Controller
+                                name="call_transfer_number"
+                                control={control}
+                                rules={{
+                                  pattern: {
+                                    value: /^\+[1-9]\d{1,14}$/,
+                                    message: "Please enter a valid phone number in E.164 format (e.g., +15551234567)"
+                                  }
+                                }}
+                                render={({ field, fieldState }) => (
+                                  <>
+                                    <Input
+                                      {...field}
+                                      id="call_transfer_number"
+                                      placeholder="+15551234567"
+                                      className={`mt-1 ${fieldState.error ? 'border-red-500' : ''}`}
+                                    />
+                                    {fieldState.error && (
+                                      <p className="text-sm text-red-500 mt-1">
+                                        {fieldState.error.message}
+                                      </p>
+                                    )}
+                                  </>
+                                )}
+                              />
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {watch("call_transfer_type") === "warmTransfer"
+                                  ? "The human agent's phone number. They will receive a call with context before connecting."
+                                  : "Enter phone number in E.164 format (include country code, e.g., +15551234567)"
+                                }
+                              </p>
+                            </div>
                           </div>
                         )}
                       </div>
