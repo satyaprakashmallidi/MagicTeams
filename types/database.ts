@@ -29,6 +29,7 @@ export interface Bot {
   twilio_phone_number?: string;
   is_call_transfer_allowed: boolean;
   call_transfer_number?: string;
+  call_transfer_sip_uri?: string;
   call_transfer_type?: 'coldTransfer' | 'warmTransfer';
   model: string;
   custom_questions?: CustomQuestion[];

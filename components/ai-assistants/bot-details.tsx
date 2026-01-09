@@ -76,6 +76,7 @@ const formSchema = z.object({
   appointment_tool_id: z.string().optional(),
   is_call_transfer_allowed: z.boolean().default(false),
   call_transfer_number: z.string().optional(),
+  call_transfer_sip_uri: z.string().optional(),
   call_transfer_type: z.enum(["coldTransfer", "warmTransfer"]).default("coldTransfer"),
   knowledge_base_usage_guide: z.string().optional(),
 });
@@ -405,6 +406,7 @@ export function BotDetails() {
     setValue("appointment_tool_id", bot.appointment_tool_id || undefined);
     setValue("is_call_transfer_allowed", bot.is_call_transfer_allowed || false);
     setValue("call_transfer_number", bot.call_transfer_number || '');
+    setValue("call_transfer_sip_uri", (bot as any).call_transfer_sip_uri || '');
     setValue("call_transfer_type", bot.call_transfer_type || 'coldTransfer');
     setValue("knowledge_base_usage_guide", bot.knowledge_base_usage_guide || '');
 
@@ -518,9 +520,8 @@ export function BotDetails() {
         appointment_tool_id: data.appointment_tool_id,
         is_call_transfer_allowed: data.is_call_transfer_allowed,
         call_transfer_number: data.call_transfer_number,
+        call_transfer_sip_uri: data.call_transfer_sip_uri,
         call_transfer_type: data.call_transfer_type,
-        selected_tools: selectedTools,
-        selected_webhooks: selectedWebhooks,
       });
 
       // Prepare the update data for Supabase
@@ -538,6 +539,7 @@ export function BotDetails() {
         appointment_tool_id: data.appointment_tool_id,
         is_call_transfer_allowed: data.is_call_transfer_allowed,
         call_transfer_number: data.call_transfer_number,
+        call_transfer_sip_uri: data.call_transfer_sip_uri,
         call_transfer_type: data.call_transfer_type,
         selected_tools: selectedTools,
         selected_webhooks: selectedWebhooks,
@@ -1273,25 +1275,7 @@ export function BotDetails() {
 
                         {isCallTransferAllowed && (
                           <div className="space-y-4">
-                            <div>
-                              <Label htmlFor="call_transfer_number">TRANSFER PHONE NUMBER</Label>
-                              <Controller
-                                name="call_transfer_number"
-                                control={control}
-                                render={({ field }) => (
-                                  <Input
-                                    {...field}
-                                    id="call_transfer_number"
-                                    placeholder="+1234567890"
-                                    className="mt-1"
-                                  />
-                                )}
-                              />
-                              <p className="text-sm text-muted-foreground mt-1">
-                                Enter number where calls should be transferred (include country code)
-                              </p>
-                            </div>
-
+                            {/* Transfer Type Selection - FIRST */}
                             <div>
                               <Label htmlFor="call_transfer_type">TRANSFER TYPE</Label>
                               <Controller
@@ -1320,6 +1304,83 @@ export function BotDetails() {
                                 Cold: Caller is transferred immediately. Warm: Agent briefs the human operator before connecting.
                               </p>
                             </div>
+
+                            {/* Conditional Input: Phone Number for Cold Transfer */}
+                            {watch("call_transfer_type") === "coldTransfer" && (
+                              <div>
+                                <Label htmlFor="call_transfer_number">TRANSFER PHONE NUMBER</Label>
+                                <Controller
+                                  name="call_transfer_number"
+                                  control={control}
+                                  rules={{
+                                    pattern: {
+                                      value: /^\+[1-9]\d{1,14}$/,
+                                      message: "Please enter a valid phone number in E.164 format (e.g., +15551234567)"
+                                    }
+                                  }}
+                                  render={({ field, fieldState }) => (
+                                    <>
+                                      <Input
+                                        {...field}
+                                        id="call_transfer_number"
+                                        placeholder="+15551234567"
+                                        className={`mt-1 ${fieldState.error ? 'border-red-500' : ''}`}
+                                      />
+                                      {fieldState.error && (
+                                        <p className="text-sm text-red-500 mt-1">
+                                          {fieldState.error.message}
+                                        </p>
+                                      )}
+                                    </>
+                                  )}
+                                />
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  Enter phone number in E.164 format (include country code, e.g., +15551234567)
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Conditional Input: SIP URI for Warm Transfer */}
+                            {watch("call_transfer_type") === "warmTransfer" && (
+                              <div>
+                                <Label htmlFor="call_transfer_sip_uri">TRANSFER SIP URI</Label>
+                                <Controller
+                                  name="call_transfer_sip_uri"
+                                  control={control}
+                                  rules={{
+                                    validate: (value) => {
+                                      if (!value) return true; // Optional field
+                                      if (!value.startsWith('sip:')) {
+                                        return "Warm transfer requires a SIP endpoint, not a phone number. URI must start with 'sip:'";
+                                      }
+                                      // Check if user accidentally entered a phone number
+                                      if (/^\+?\d+$/.test(value)) {
+                                        return "Warm transfer requires a SIP endpoint, not a phone number.";
+                                      }
+                                      return true;
+                                    }
+                                  }}
+                                  render={({ field, fieldState }) => (
+                                    <>
+                                      <Input
+                                        {...field}
+                                        id="call_transfer_sip_uri"
+                                        placeholder="sip:agent@your-domain.sip.twilio.com"
+                                        className={`mt-1 ${fieldState.error ? 'border-red-500' : ''}`}
+                                      />
+                                      {fieldState.error && (
+                                        <p className="text-sm text-red-500 mt-1">
+                                          {fieldState.error.message}
+                                        </p>
+                                      )}
+                                    </>
+                                  )}
+                                />
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  Enter the SIP URI of the human agent (e.g., sip:agent@your-domain.sip.twilio.com)
+                                </p>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
