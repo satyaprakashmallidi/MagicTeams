@@ -67,60 +67,23 @@ export const useCallRecordsStore = create<CallRecordsStore>((set, get) => ({
         throw new Error('User not authenticated');
       }
 
-      // Get current and previous month for partition names
-      const getPartitionName = (date: Date) => {
-        const year = date.getFullYear();
-        console.log("year" , year);
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        console.log("month" , month);
-        console.log("partition name" , `call_records_${year}_${month}`);
-        return `call_records_${year}_${month}`;
-      };
+      // Query from the unified call_records table
+      const { data, error } = await supabase
+        .from('call_records')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
 
-      const now = new Date();
-      const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-
-      const currentPartition = getPartitionName(currentMonth);
-      const prevPartition = getPartitionName(prevMonth);
-
-
-      // Function to fetch from a single partition
-      const fetchFromPartition = async (partition: string) => {
-        const { data, error } = await supabase
-          .from(partition)
-          .select('*')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false });
-        
-        if (error && error.code !== '42P01') { // Ignore "relation does not exist" error
-          console.error(`Error fetching from partition ${partition}:`, error);
-          throw error;
-        }
-        return data || [];
-      };
-
-
-      // Fetch from both current and previous month's partitions
-      const [currentData, prevData] = await Promise.allSettled([
-        fetchFromPartition(currentPartition),
-        fetchFromPartition(prevPartition)
-      ]);
-
-      // Combine and sort results
-      const allRecords = [
-        ...(currentData.status === 'fulfilled' ? currentData.value : []),
-        ...(prevData.status === 'fulfilled' ? prevData.value : [])
-      ].sort((a, b) => 
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
+      if (error) {
+        console.error('Error fetching call records:', error);
+        throw error;
+      }
 
       set({ 
-        callRecords: allRecords,
-        lastFetched: now.getTime() 
+        callRecords: data || [],
+        lastFetched: Date.now() 
       });
 
-      // return data;
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Failed to fetch call records' });
       throw error;
