@@ -23,7 +23,7 @@ interface UpdateWebhookDialogProps {
 export function UpdateWebhookDialog({ webhook, open, onOpenChange }: UpdateWebhookDialogProps) {
   const [url, setUrl] = useState('');
   const [selectedEvents, setSelectedEvents] = useState<WebhookEvent[]>([]);
-  const [agentId, setAgentId] = useState<string>('');
+  const [selectedBotId, setSelectedBotId] = useState<string>('global');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
@@ -36,7 +36,7 @@ export function UpdateWebhookDialog({ webhook, open, onOpenChange }: UpdateWebho
     if (webhook && open) {
       setUrl(webhook.url);
       setSelectedEvents(webhook.events);
-      setAgentId(webhook.agentId || '');
+      setSelectedBotId(webhook.agentId || 'global');
       setErrors({});
     }
   }, [webhook, open]);
@@ -80,10 +80,24 @@ export function UpdateWebhookDialog({ webhook, open, onOpenChange }: UpdateWebho
     setIsSubmitting(true);
 
     try {
+      const selectedBot = selectedBotId === 'global'
+        ? null
+        : bots.find(bot => bot.id === selectedBotId) || null;
+
+      if (selectedBot && !selectedBot.ultravox_agent_id) {
+        toast({
+          title: "Error",
+          description: "Selected bot is not synced to Ultravox. Please sync the bot first.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const request: UpdateWebhookRequest = {
         url: url.trim(),
         events: selectedEvents,
-        agentId: agentId || null,
+        agentId: selectedBot?.ultravox_agent_id || null,
+        agent_id: selectedBot?.id || null,
       };
 
       await updateWebhook(webhook.webhook_id, request);
@@ -180,23 +194,23 @@ export function UpdateWebhookDialog({ webhook, open, onOpenChange }: UpdateWebho
             )}
           </div>
 
-          {/* Agent/Bot Selection */}
-          {/* <div className="space-y-2">
-            <Label htmlFor="agent-select">Associate with Agent (Optional)</Label>
-            <Select value={agentId} onValueChange={setAgentId}>
+          {/* Scope Selection */}
+          <div className="space-y-2">
+            <Label htmlFor="scope-select">Scope</Label>
+            <Select value={selectedBotId} onValueChange={setSelectedBotId}>
               <SelectTrigger>
-                <SelectValue placeholder="Select an agent (optional)" />
+                <SelectValue placeholder="Select scope" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No specific agent</SelectItem>
-                {bots.map((bot) => (
+                <SelectItem value="global">Global (All Bots)</SelectItem>
+                {bots.filter(bot => !bot.is_deleted).map((bot) => (
                   <SelectItem key={bot.id} value={bot.id}>
                     {bot.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </div> */}
+          </div>
 
           {/* Status Display */}
           <div className="space-y-2">
