@@ -168,7 +168,7 @@ export function WebhookList() {
                 </TableHeader>
                 <TableBody>
                   {webhooks.map((webhook) => (
-                    <TableRow key={webhook.webhookId}>
+                    <TableRow key={webhook.webhook_id}>
                       <TableCell className="max-w-xs">
                         <div className="truncate" title={webhook.url}>
                           {webhook.url}
@@ -218,11 +218,11 @@ export function WebhookList() {
                             </DropdownMenuItem>
                             <DropdownMenuItem 
                               onClick={() => handleTestWebhook(webhook)}
-                              disabled={testingWebhookId === webhook.webhookId}
+                              disabled={testingWebhookId === webhook.webhook_id}
                             >
                               <Icon 
-                                name={testingWebhookId === webhook.webhookId ? "loader" : "zap"} 
-                                className={`h-4 w-4 mr-2 ${testingWebhookId === webhook.webhookId ? "animate-spin" : ""}`} 
+                                name={testingWebhookId === webhook.webhook_id ? "loader" : "zap"} 
+                                className={`h-4 w-4 mr-2 ${testingWebhookId === webhook.webhook_id ? "animate-spin" : ""}`} 
                               />
                               Test
                             </DropdownMenuItem>

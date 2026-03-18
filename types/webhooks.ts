@@ -1,4 +1,4 @@
-export type WebhookEvent = 'call.started' | 'call.joined' | 'call.ended';
+export type WebhookEvent = 'call.started' | 'call.joined' | 'call.ended' | 'call.billed';
 
 export interface WebhookFailure {
   timestamp: string;
@@ -22,6 +22,7 @@ export interface CreateWebhookRequest {
   url: string;
   events: WebhookEvent[];
   agentId?: string | null;
+  agent_id?: string | null;
   secrets?: string[];
 }
 
@@ -29,6 +30,7 @@ export interface UpdateWebhookRequest {
   url?: string;
   events?: WebhookEvent[];
   agentId?: string | null;
+  agent_id?: string | null;
   secrets?: string[];
 }
 
@@ -68,5 +70,10 @@ export const WEBHOOK_EVENTS: { value: WebhookEvent; label: string; description: 
     value: 'call.ended',
     label: 'Call Ended',
     description: 'Triggered when a call ends'
+  },
+  {
+    value: 'call.billed',
+    label: 'Call Billed',
+    description: 'Triggered when a call is billed'
   }
 ];
